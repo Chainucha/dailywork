@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 // ---------------------------------------------------------------------------
@@ -111,9 +112,10 @@ class EmployerShellPlaceholder extends StatelessWidget {
 // Router
 // ---------------------------------------------------------------------------
 
-final GoRouter appRouter = GoRouter(
-  initialLocation: '/',
-  routes: [
+final routerProvider = Provider<GoRouter>((ref) {
+  return GoRouter(
+    initialLocation: '/',
+    routes: [
     // Root — role selection
     GoRoute(
       path: '/',
@@ -164,4 +166,5 @@ final GoRouter appRouter = GoRouter(
       ],
     ),
   ],
-);
+  );
+});

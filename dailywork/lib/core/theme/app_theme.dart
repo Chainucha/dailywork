@@ -124,15 +124,15 @@ class AppTheme {
       ),
 
       // Bottom navigation bar
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: card,
         selectedItemColor: primary,
-        unselectedItemColor: Color(0xFF9E9E9E),
-        selectedLabelStyle: TextStyle(
+        unselectedItemColor: const Color(0xFF9E9E9E),
+        selectedLabelStyle: GoogleFonts.nunito(
           fontWeight: FontWeight.w700,
           fontSize: 12,
         ),
-        unselectedLabelStyle: TextStyle(
+        unselectedLabelStyle: GoogleFonts.nunito(
           fontWeight: FontWeight.w500,
           fontSize: 12,
         ),
