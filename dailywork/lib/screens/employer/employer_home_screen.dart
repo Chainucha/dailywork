@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'package:dailywork/core/theme/app_theme.dart';
 import 'package:dailywork/providers/language_provider.dart';
@@ -53,26 +54,79 @@ class EmployerHomeScreen extends ConsumerWidget {
               loading: () => const Center(
                 child: CircularProgressIndicator(color: AppTheme.accent),
               ),
-              error: (e, _) => const Center(
-                child: Text('Failed to load jobs'),
+              error: (e, _) => Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Failed to load jobs',
+                      style: GoogleFonts.nunito(
+                        fontSize: 18,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () => ref.invalidate(jobListProvider),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Retry'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.accent,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               data: (jobs) {
                 if (jobs.isEmpty) {
-                  return const Center(
-                    child: Text('No jobs found'),
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.work_off_outlined, size: 64, color: Colors.grey[400]),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No jobs posted yet',
+                          style: GoogleFonts.nunito(
+                            fontSize: 18,
+                            color: Colors.grey[500],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tap the + button to post a job',
+                          style: GoogleFonts.nunito(
+                            fontSize: 14,
+                            color: Colors.grey[400],
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 }
-                return ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  itemCount: jobs.length,
-                  itemBuilder: (context, index) {
-                    final job = jobs[index];
-                    return JobCard(
-                      job: job,
-                      onTap: () => context.push('/employer/jobs/${job.id}'),
-                      isEmployerView: true,
-                    );
+                return RefreshIndicator(
+                  color: AppTheme.accent,
+                  onRefresh: () async {
+                    ref.invalidate(jobListProvider);
+                    await ref.read(jobListProvider.future);
                   },
+                  child: ListView.builder(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    itemCount: jobs.length,
+                    itemBuilder: (context, index) {
+                      final job = jobs[index];
+                      return JobCard(
+                        job: job,
+                        onTap: () => context.push('/employer/jobs/${job.id}'),
+                        isEmployerView: true,
+                      );
+                    },
+                  ),
                 );
               },
             ),
