@@ -197,7 +197,7 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
                   minimumSize: const Size(48, 48),
                 ),
                 child: Text(
-                  'Reset',
+                  strings['reset'] ?? 'Reset',
                   style: GoogleFonts.nunito(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,

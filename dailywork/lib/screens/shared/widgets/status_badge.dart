@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:dailywork/core/theme/app_theme.dart';
 import 'package:dailywork/models/job_model.dart';
+import 'package:dailywork/providers/language_provider.dart';
 
-class StatusBadge extends StatelessWidget {
+class StatusBadge extends ConsumerWidget {
   final JobStatus status;
 
   const StatusBadge({super.key, required this.status});
@@ -24,23 +26,24 @@ class StatusBadge extends StatelessWidget {
     }
   }
 
-  String get _label {
+  String _label(Map<String, String> strings) {
     switch (status) {
       case JobStatus.open:
-        return 'Open';
+        return strings['open'] ?? 'Open';
       case JobStatus.assigned:
-        return 'Assigned';
+        return strings['assigned'] ?? 'Assigned';
       case JobStatus.inProgress:
-        return 'In Progress';
+        return strings['in_progress'] ?? 'In Progress';
       case JobStatus.completed:
-        return 'Completed';
+        return strings['completed'] ?? 'Completed';
       case JobStatus.cancelled:
-        return 'Cancelled';
+        return strings['cancelled'] ?? 'Cancelled';
     }
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final strings = ref.watch(stringsProvider);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -48,7 +51,7 @@ class StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        _label,
+        _label(strings),
         style: GoogleFonts.nunito(
           fontSize: 11,
           fontWeight: FontWeight.w600,

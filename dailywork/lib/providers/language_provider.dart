@@ -42,6 +42,7 @@ const Map<String, String> _enStrings = {
   'coming_soon': 'Coming soon',
   'years': 'Yrs',
   'km_away': '~5 km away',
+  'reset': 'Reset',
 };
 
 // Kannada strings
@@ -83,6 +84,7 @@ const Map<String, String> _knStrings = {
   'coming_soon': 'ಶೀಘ್ರದಲ್ಲಿ ಬರಲಿದೆ',
   'years': 'ವರ್ಷ',
   'km_away': '~5 ಕಿ.ಮೀ ದೂರ',
+  'reset': 'ಮರುಹೊಂದಿಸಿ',
 };
 
 // Provider that returns current strings map

@@ -55,8 +55,7 @@ class JobCard extends ConsumerWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        child: IntrinsicHeight(
-          child: Row(
+        child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Left accent strip
@@ -205,7 +204,6 @@ class JobCard extends ConsumerWidget {
             ],
           ),
         ),
-      ),
     );
   }
 }

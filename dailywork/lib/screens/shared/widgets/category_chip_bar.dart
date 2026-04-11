@@ -15,10 +15,10 @@ class CategoryChipBar extends ConsumerWidget {
 
     return categoriesAsync.when(
       loading: () => const SizedBox(
-        height: 40,
+        height: 48,
         child: Center(child: CircularProgressIndicator()),
       ),
-      error: (e, st) => const SizedBox(height: 40),
+      error: (e, st) => const SizedBox(height: 48),
       data: (categories) {
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -60,7 +60,7 @@ class CategoryChipBar extends ConsumerWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          height: 40,
+          height: 48,
           padding: const EdgeInsets.symmetric(horizontal: 14),
           decoration: BoxDecoration(
             color: isSelected ? AppTheme.accent : Colors.transparent,
