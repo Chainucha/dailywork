@@ -8,4 +8,10 @@ class CategoryModel {
     required this.name,
     required this.iconName,
   });
+
+  factory CategoryModel.fromJson(Map<String, dynamic> json) => CategoryModel(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    iconName: json['icon_name'] as String,
+  );
 }

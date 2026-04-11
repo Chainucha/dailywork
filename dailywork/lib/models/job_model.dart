@@ -39,6 +39,37 @@ class JobModel {
     required this.applicantCount,
   });
 
+  factory JobModel.fromJson(Map<String, dynamic> json) {
+    JobStatus parseStatus(String s) => switch (s) {
+      'open'        => JobStatus.open,
+      'assigned'    => JobStatus.assigned,
+      'in_progress' => JobStatus.inProgress,
+      'completed'   => JobStatus.completed,
+      'cancelled'   => JobStatus.cancelled,
+      _             => JobStatus.open,
+    };
+
+    return JobModel(
+      id: json['id'] as String,
+      employerId: json['employer_id'] as String,
+      employerName: (json['employer_name'] as String?) ?? '',
+      categoryId: json['category_id'] as String,
+      categoryName: (json['category_name'] as String?) ?? '',
+      title: json['title'] as String,
+      description: json['description'] as String?,
+      locationLat: (json['location_lat'] as num).toDouble(),
+      locationLng: (json['location_lng'] as num).toDouble(),
+      wagePerDay: (json['wage_per_day'] as num).toDouble(),
+      workersNeeded: json['workers_needed'] as int,
+      workersAssigned: json['workers_assigned'] as int,
+      status: parseStatus(json['status'] as String),
+      startDate: DateTime.parse(json['start_date'] as String),
+      endDate: DateTime.parse(json['end_date'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String),
+      applicantCount: (json['applicant_count'] as num?)?.toInt() ?? 0,
+    );
+  }
+
   // Convenience getters
   bool get isUrgent =>
       startDate.difference(DateTime.now()).inDays <= 2 &&
