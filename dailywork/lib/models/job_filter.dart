@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'job_model.dart';
 
 class JobFilter {
@@ -22,4 +24,14 @@ class JobFilter {
       maxWage: maxWage ?? this.maxWage,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      other is JobFilter &&
+      listEquals(other.statuses, statuses) &&
+      other.minWage == minWage &&
+      other.maxWage == maxWage;
+
+  @override
+  int get hashCode => Object.hash(Object.hashAll(statuses), minWage, maxWage);
 }

@@ -44,5 +44,9 @@ class JobModel {
       startDate.difference(DateTime.now()).inDays <= 2 &&
       status == JobStatus.open;
 
-  String get distancePlaceholder => '~5 km away'; // static for demo
+  @override
+  bool operator ==(Object other) => other is JobModel && other.id == id;
+
+  @override
+  int get hashCode => id.hashCode;
 }
