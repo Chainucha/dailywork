@@ -52,6 +52,9 @@ class JobResponse(BaseModel):
     start_date: date
     end_date: date
     created_at: datetime
+    category_name: str | None = None
+    employer_name: str | None = None
+    applicant_count: int = 0
 
 
 class JobListResponse(BaseModel):

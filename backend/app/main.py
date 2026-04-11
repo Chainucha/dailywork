@@ -7,7 +7,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
-from app.routers import auth, users, workers, employers, jobs, applications, reviews, notifications
+from app.routers import auth, users, workers, employers, jobs, applications, reviews, notifications, categories
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -53,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(applications.router,  prefix=f"{PREFIX}")
     app.include_router(reviews.router,       prefix=f"{PREFIX}/reviews")
     app.include_router(notifications.router, prefix=f"{PREFIX}/notifications")
+    app.include_router(categories.router,    prefix=f"{PREFIX}/categories")
 
     @app.get("/health")
     async def health():
