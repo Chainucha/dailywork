@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:dailywork/screens/auth/role_select_screen.dart';
+import 'package:dailywork/screens/worker/worker_shell.dart';
+import 'package:dailywork/screens/worker/worker_home_screen.dart';
+import 'package:dailywork/screens/worker/worker_job_detail_screen.dart';
+import 'package:dailywork/screens/worker/worker_profile_screen.dart';
 
 // ---------------------------------------------------------------------------
 // Placeholder screens — will be replaced when real screen files are created.
@@ -25,33 +29,6 @@ class _PlaceholderScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-// Worker screens
-class WorkerHomeScreenPlaceholder extends StatelessWidget {
-  const WorkerHomeScreenPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) =>
-      const _PlaceholderScreen(label: 'Worker Home');
-}
-
-class WorkerJobDetailScreenPlaceholder extends StatelessWidget {
-  const WorkerJobDetailScreenPlaceholder({super.key, required this.jobId});
-
-  final String jobId;
-
-  @override
-  Widget build(BuildContext context) =>
-      _PlaceholderScreen(label: 'Worker Job Detail — $jobId');
-}
-
-class WorkerProfileScreenPlaceholder extends StatelessWidget {
-  const WorkerProfileScreenPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) =>
-      const _PlaceholderScreen(label: 'Worker Profile');
 }
 
 // Employer screens
@@ -85,14 +62,6 @@ class EmployerProfileScreenPlaceholder extends StatelessWidget {
 // Shell placeholders (bottom-nav wrappers — flat GoRoute for now)
 // ---------------------------------------------------------------------------
 
-class WorkerShellPlaceholder extends StatelessWidget {
-  const WorkerShellPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) =>
-      const _PlaceholderScreen(label: 'Worker Shell');
-}
-
 class EmployerShellPlaceholder extends StatelessWidget {
   const EmployerShellPlaceholder({super.key});
 
@@ -116,23 +85,22 @@ final routerProvider = Provider<GoRouter>((ref) {
     ),
 
     // Worker section
-    GoRoute(
-      path: '/worker',
-      builder: (context, state) => const WorkerShellPlaceholder(),
+    ShellRoute(
+      builder: (context, state, child) => WorkerShell(child: child),
       routes: [
         GoRoute(
-          path: 'home',
-          builder: (context, state) => const WorkerHomeScreenPlaceholder(),
+          path: '/worker/home',
+          builder: (context, state) => const WorkerHomeScreen(),
         ),
         GoRoute(
-          path: 'jobs/:id',
-          builder: (context, state) => WorkerJobDetailScreenPlaceholder(
-            jobId: state.pathParameters['id'] ?? '',
+          path: '/worker/jobs/:id',
+          builder: (context, state) => WorkerJobDetailScreen(
+            jobId: state.pathParameters['id']!,
           ),
         ),
         GoRoute(
-          path: 'profile',
-          builder: (context, state) => const WorkerProfileScreenPlaceholder(),
+          path: '/worker/profile',
+          builder: (context, state) => const WorkerProfileScreen(),
         ),
       ],
     ),
