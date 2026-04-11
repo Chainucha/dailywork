@@ -14,7 +14,7 @@ class EmployerShell extends ConsumerWidget {
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
     if (location.contains('/employer/profile')) return 2;
-    if (location.contains('/employer/jobs/')) return 1;
+    // Job detail is reached from home list — highlight Home tab
     return 0;
   }
 
@@ -45,7 +45,10 @@ class EmployerShell extends ConsumerWidget {
             case 0:
               context.go('/employer/home');
             case 1:
-              context.go('/employer/home');
+              // Post Job feature coming in a future release
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(strings['coming_soon'] ?? 'Coming soon')),
+              );
             case 2:
               context.go('/employer/profile');
           }
