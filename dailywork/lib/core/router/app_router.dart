@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:dailywork/screens/auth/role_select_screen.dart';
+
 // ---------------------------------------------------------------------------
 // Placeholder screens — will be replaced when real screen files are created.
 // ---------------------------------------------------------------------------
@@ -23,15 +25,6 @@ class _PlaceholderScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-// Role selection (initial route)
-class RoleSelectScreenPlaceholder extends StatelessWidget {
-  const RoleSelectScreenPlaceholder({super.key});
-
-  @override
-  Widget build(BuildContext context) =>
-      const _PlaceholderScreen(label: 'Role Select');
 }
 
 // Worker screens
@@ -119,7 +112,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     // Root — role selection
     GoRoute(
       path: '/',
-      builder: (context, state) => const RoleSelectScreenPlaceholder(),
+      builder: (context, state) => const RoleSelectScreen(),
     ),
 
     // Worker section
