@@ -114,7 +114,7 @@ class JobCard extends ConsumerWidget {
                           ),
                           const Spacer(),
                           Text(
-                            strings['km_away'] ?? '~5 km away',
+                            strings['km_away'] ?? '',
                             style: GoogleFonts.nunito(
                               fontSize: 12,
                               color: Colors.grey[500],
