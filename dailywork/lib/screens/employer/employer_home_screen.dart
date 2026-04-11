@@ -81,54 +81,58 @@ class EmployerHomeScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              data: (jobs) {
-                if (jobs.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+              data: (jobs) => RefreshIndicator(
+                color: AppTheme.accent,
+                onRefresh: () async {
+                  await ref.refresh(jobListProvider.future);
+                },
+                child: jobs.isEmpty
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       children: [
-                        Icon(Icons.work_off_outlined, size: 64, color: Colors.grey[400]),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No jobs posted yet',
-                          style: GoogleFonts.nunito(
-                            fontSize: 18,
-                            color: Colors.grey[500],
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Tap the + button to post a job',
-                          style: GoogleFonts.nunito(
-                            fontSize: 14,
-                            color: Colors.grey[400],
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.6,
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.work_off_outlined, size: 64, color: Colors.grey[400]),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No jobs posted yet',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 18,
+                                    color: Colors.grey[500],
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Tap the + button to post a job',
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 14,
+                                    color: Colors.grey[400],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      itemCount: jobs.length,
+                      itemBuilder: (context, index) {
+                        final job = jobs[index];
+                        return JobCard(
+                          job: job,
+                          onTap: () => context.push('/employer/jobs/${job.id}'),
+                          isEmployerView: true,
+                        );
+                      },
                     ),
-                  );
-                }
-                return RefreshIndicator(
-                  color: AppTheme.accent,
-                  onRefresh: () async {
-                    ref.invalidate(jobListProvider);
-                    await ref.read(jobListProvider.future);
-                  },
-                  child: ListView.builder(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    itemCount: jobs.length,
-                    itemBuilder: (context, index) {
-                      final job = jobs[index];
-                      return JobCard(
-                        job: job,
-                        onTap: () => context.push('/employer/jobs/${job.id}'),
-                        isEmployerView: true,
-                      );
-                    },
-                  ),
-                );
-              },
+              ),
             ),
           ),
         ],
