@@ -55,19 +55,15 @@ class JobCard extends ConsumerWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Left accent strip
-              Container(
-                width: 4,
-                color: categoryColor,
+        child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(color: categoryColor, width: 4),
               ),
-              // Content area
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Title row + StatusBadge
@@ -201,8 +197,6 @@ class JobCard extends ConsumerWidget {
                   ),
                 ),
               ),
-            ],
-          ),
         ),
     );
   }
