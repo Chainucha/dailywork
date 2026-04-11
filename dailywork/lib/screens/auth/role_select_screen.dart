@@ -76,7 +76,7 @@ class RoleSelectScreen extends ConsumerWidget {
                   // Worker card
                   _RoleCard(
                     icon: Icons.construction,
-                    title: strings['worker'] ?? 'Worker',
+                    title: strings['worker'] ?? '',
                     subtitle: 'Find daily wage work near you',
                     onTap: () {
                       ref
@@ -90,7 +90,7 @@ class RoleSelectScreen extends ConsumerWidget {
                   // Employer card
                   _RoleCard(
                     icon: Icons.business,
-                    title: strings['employer'] ?? 'Employer',
+                    title: strings['employer'] ?? '',
                     subtitle: 'Post jobs and hire workers',
                     onTap: () {
                       ref
