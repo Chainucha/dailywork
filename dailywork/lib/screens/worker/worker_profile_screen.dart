@@ -101,7 +101,7 @@ class WorkerProfileScreen extends ConsumerWidget {
                         _StatRow(
                           label: strings['reliability'] ?? 'Reliability',
                           value:
-                              '${user.workerProfile?.reliabilityPercent.toStringAsFixed(0) ?? 0}%',
+                              '${user.workerProfile?.reliabilityPercent.toStringAsFixed(0) ?? '0'}%',
                         ),
                         const Divider(height: 20),
                         _StatRow(
@@ -141,8 +141,11 @@ class WorkerProfileScreen extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        ...MockUsers.mockWorkerReviews.map(
-                          (review) => _ReviewItem(review: review),
+                        ...MockUsers.mockWorkerReviews.asMap().entries.map(
+                          (entry) => _ReviewItem(
+                            review: entry.value,
+                            isLast: entry.key == MockUsers.mockWorkerReviews.length - 1,
+                          ),
                         ),
                       ],
                     ),
@@ -304,9 +307,10 @@ class _StatRow extends StatelessWidget {
 }
 
 class _ReviewItem extends StatelessWidget {
-  const _ReviewItem({required this.review});
+  const _ReviewItem({required this.review, required this.isLast});
 
   final Map<String, dynamic> review;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
@@ -354,8 +358,7 @@ class _ReviewItem extends StatelessWidget {
               height: 1.4,
             ),
           ),
-          if (review != MockUsers.mockWorkerReviews.last)
-            const Divider(height: 16),
+          if (!isLast) const Divider(height: 16),
         ],
       ),
     );
