@@ -10,11 +10,11 @@ final jobFilterProvider = StateProvider<JobFilter>((ref) => const JobFilter());
 final jobListProvider = FutureProvider.autoDispose<List<JobModel>>((ref) {
   final categoryId = ref.watch(selectedCategoryProvider);
   final filter = ref.watch(jobFilterProvider);
-  return ref.watch(jobRepositoryProvider).getJobs(categoryId: categoryId, filter: filter);
+  return ref.read(jobRepositoryProvider).getJobs(categoryId: categoryId, filter: filter);
 });
 
 // Single job detail
 final jobDetailProvider =
     FutureProvider.autoDispose.family<JobModel, String>((ref, id) {
-  return ref.watch(jobRepositoryProvider).getJobById(id);
+  return ref.read(jobRepositoryProvider).getJobById(id);
 });

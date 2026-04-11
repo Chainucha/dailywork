@@ -8,9 +8,10 @@ final jobRepositoryProvider = Provider<JobRepository>((ref) {
   return MockJobRepository();
 });
 
-// Fetches all categories
+// Categories are loaded once per session and not autoDisposed — intentional,
+// as the category list is static for the app's lifetime.
 final categoryListProvider = FutureProvider<List<CategoryModel>>((ref) {
-  return ref.watch(jobRepositoryProvider).getCategories();
+  return ref.read(jobRepositoryProvider).getCategories();
 });
 
 // Currently selected category chip (null = "All")
