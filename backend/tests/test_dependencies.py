@@ -19,3 +19,144 @@ def test_jwt_secret_is_optional():
         SUPABASE_SERVICE_ROLE_KEY="srk",
     )
     assert s.SUPABASE_JWT_SECRET == ""
+
+
+import time
+from unittest.mock import patch, MagicMock
+
+import jwt as pyjwt
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
+from fastapi import HTTPException
+import pytest
+
+from app.dependencies import get_current_user
+
+
+# ── helpers ──────────────────────────────────────────────────────────
+
+def _generate_rsa_keypair():
+    """Generate an RSA private/public key pair for testing."""
+    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    public_key = private_key.public_key()
+    return private_key, public_key
+
+
+def _make_token(private_key, sub: str = "user-123", exp_offset: int = 300) -> str:
+    """Create a signed RS256 JWT."""
+    payload = {
+        "sub": sub,
+        "exp": int(time.time()) + exp_offset,
+        "aud": "authenticated",
+    }
+    pem = private_key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    )
+    return pyjwt.encode(payload, pem, algorithm="RS256")
+
+
+def _make_hs256_token(secret: str, sub: str = "user-123", exp_offset: int = 300) -> str:
+    """Create a signed HS256 JWT."""
+    payload = {
+        "sub": sub,
+        "exp": int(time.time()) + exp_offset,
+    }
+    return pyjwt.encode(payload, secret, algorithm="HS256")
+
+
+# ── mock credentials object ─────────────────────────────────────────
+
+class FakeCredentials:
+    def __init__(self, token: str):
+        self.credentials = token
+
+
+# ── tests ────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_valid_rs256_token_returns_user():
+    private_key, public_key = _generate_rsa_keypair()
+    token = _make_token(private_key)
+
+    mock_signing_key = MagicMock()
+    mock_signing_key.key = public_key
+
+    fake_user = {"id": "user-123", "user_type": "worker", "is_active": True}
+
+    with (
+        patch("app.dependencies._get_signing_key", return_value=mock_signing_key),
+        patch("app.dependencies.settings") as mock_settings,
+        patch("app.dependencies.get_supabase") as mock_db,
+    ):
+        mock_settings.SUPABASE_JWT_SECRET = ""
+        mock_db.return_value.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = [fake_user]
+
+        user = await get_current_user(FakeCredentials(token))
+        assert user["id"] == "user-123"
+
+
+@pytest.mark.asyncio
+async def test_expired_token_raises_401():
+    private_key, public_key = _generate_rsa_keypair()
+    token = _make_token(private_key, exp_offset=-60)  # already expired
+
+    mock_signing_key = MagicMock()
+    mock_signing_key.key = public_key
+
+    with (
+        patch("app.dependencies._get_signing_key", return_value=mock_signing_key),
+        patch("app.dependencies.settings") as mock_settings,
+    ):
+        mock_settings.SUPABASE_JWT_SECRET = ""
+        with pytest.raises(HTTPException) as exc_info:
+            await get_current_user(FakeCredentials(token))
+        assert exc_info.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_hs256_fallback_when_jwks_fails():
+    secret = "test-hs256-secret"
+    token = _make_hs256_token(secret)
+
+    fake_user = {"id": "user-123", "user_type": "employer", "is_active": True}
+
+    with (
+        patch("app.dependencies._get_signing_key", side_effect=Exception("JWKS unavailable")),
+        patch("app.dependencies.settings") as mock_settings,
+        patch("app.dependencies.get_supabase") as mock_db,
+    ):
+        mock_settings.SUPABASE_JWT_SECRET = secret
+        mock_db.return_value.table.return_value.select.return_value.eq.return_value.eq.return_value.execute.return_value.data = [fake_user]
+
+        user = await get_current_user(FakeCredentials(token))
+        assert user["id"] == "user-123"
+
+
+@pytest.mark.asyncio
+async def test_no_sub_claim_raises_401():
+    private_key, public_key = _generate_rsa_keypair()
+    # Token without sub claim
+    pem = private_key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    )
+    token = pyjwt.encode(
+        {"exp": int(time.time()) + 300, "aud": "authenticated"},
+        pem,
+        algorithm="RS256",
+    )
+
+    mock_signing_key = MagicMock()
+    mock_signing_key.key = public_key
+
+    with (
+        patch("app.dependencies._get_signing_key", return_value=mock_signing_key),
+        patch("app.dependencies.settings") as mock_settings,
+    ):
+        mock_settings.SUPABASE_JWT_SECRET = ""
+        with pytest.raises(HTTPException) as exc_info:
+            await get_current_user(FakeCredentials(token))
+        assert exc_info.value.status_code == 401
