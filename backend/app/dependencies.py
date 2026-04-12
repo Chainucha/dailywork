@@ -29,20 +29,22 @@ def _get_signing_key(token: str):
 
 def _decode_token(token: str) -> dict:
     """Try RS256 (JWKS) first, fall back to HS256 if a secret is configured."""
-    # ── RS256 via JWKS ───────────────────────────────────────────
+    jwks_unavailable = False
     try:
         signing_key = _get_signing_key(token)
+    except Exception:
+        jwks_unavailable = True
+    else:
+        # Key was fetched — decode errors here are definitive (expiry, bad sig, etc.)
         return pyjwt.decode(
             token,
             signing_key.key,
             algorithms=["RS256"],
             options={"verify_aud": False},
         )
-    except Exception:
-        pass
 
-    # ── HS256 fallback ───────────────────────────────────────────
-    if settings.SUPABASE_JWT_SECRET:
+    # ── HS256 fallback (only when JWKS was unreachable) ──────────
+    if jwks_unavailable and settings.SUPABASE_JWT_SECRET:
         return pyjwt.decode(
             token,
             settings.SUPABASE_JWT_SECRET,

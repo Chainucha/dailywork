@@ -135,6 +135,29 @@ async def test_hs256_fallback_when_jwks_fails():
 
 
 @pytest.mark.asyncio
+async def test_expired_rs256_token_raises_401_even_with_hs256_secret():
+    """Expiry must be caught on the RS256 path, not via fallback exhaustion.
+
+    With a valid HS256 secret configured, an expired RS256 token must still 401
+    immediately — it must NOT fall through to HS256 as if JWKS was unavailable.
+    """
+    private_key, public_key = _generate_rsa_keypair()
+    token = _make_token(private_key, exp_offset=-60)  # already expired
+
+    mock_signing_key = MagicMock()
+    mock_signing_key.key = public_key
+
+    with (
+        patch("app.dependencies._get_signing_key", return_value=mock_signing_key),
+        patch("app.dependencies.settings") as mock_settings,
+    ):
+        mock_settings.SUPABASE_JWT_SECRET = "a-valid-hs256-secret-long-enough-32ch"
+        with pytest.raises(HTTPException) as exc_info:
+            await get_current_user(FakeCredentials(token))
+        assert exc_info.value.status_code == 401
+
+
+@pytest.mark.asyncio
 async def test_no_sub_claim_raises_401():
     private_key, public_key = _generate_rsa_keypair()
     # Token without sub claim
