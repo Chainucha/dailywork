@@ -1,3 +1,4 @@
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -5,7 +6,10 @@ class Settings(BaseSettings):
     # Supabase
     SUPABASE_URL: str
     SUPABASE_SERVICE_ROLE_KEY: str
-    SUPABASE_JWT_SECRET: str
+
+    # JWT — JWKS (RS256) is primary; HS256 secret is optional fallback
+    SUPABASE_JWKS_URL: str = ""
+    SUPABASE_JWT_SECRET: str = ""
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -21,6 +25,14 @@ class Settings(BaseSettings):
 
     # Firebase Cloud Messaging
     FCM_SERVER_KEY: str = ""
+
+    @model_validator(mode="after")
+    def _default_jwks_url(self) -> "Settings":
+        if not self.SUPABASE_JWKS_URL:
+            self.SUPABASE_JWKS_URL = (
+                f"{self.SUPABASE_URL}/auth/v1/.well-known/jwks.json"
+            )
+        return self
 
     class Config:
         env_file = ".env"
