@@ -1,11 +1,10 @@
 from fastapi import HTTPException, status
-from app.supabase_client import get_supabase
+from app.supabase_client import get_supabase, get_auth_client
 
 
 def send_otp(phone: str) -> dict:
-    db = get_supabase()
     try:
-        db.auth.sign_in_with_otp({"phone": phone})
+        get_auth_client().auth.sign_in_with_otp({"phone": phone})
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -15,9 +14,12 @@ def send_otp(phone: str) -> dict:
 
 
 def verify_otp(phone: str, token: str, user_type: str | None) -> dict:
-    db = get_supabase()
+    # Use a fresh auth client — verify_otp sets the user session internally,
+    # which would overwrite the service role key on a shared client.
     try:
-        result = db.auth.verify_otp({"phone": phone, "token": token, "type": "sms"})
+        result = get_auth_client().auth.verify_otp(
+            {"phone": phone, "token": token, "type": "sms"}
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -27,7 +29,8 @@ def verify_otp(phone: str, token: str, user_type: str | None) -> dict:
     auth_user = result.user
     session = result.session
 
-    # Check if user row already exists
+    # All DB writes use the singleton service-role client (bypasses RLS).
+    db = get_supabase()
     existing = db.table("users").select("*").eq("id", auth_user.id).execute()
 
     if existing.data:
@@ -65,9 +68,8 @@ def verify_otp(phone: str, token: str, user_type: str | None) -> dict:
 
 
 def refresh_session(refresh_token: str) -> dict:
-    db = get_supabase()
     try:
-        result = db.auth.refresh_session(refresh_token)
+        result = get_auth_client().auth.refresh_session(refresh_token)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -82,9 +84,8 @@ def refresh_session(refresh_token: str) -> dict:
     }
 
 
-def logout(access_token: str) -> None:
-    db = get_supabase()
+def logout(user_id: str) -> None:
     try:
-        db.auth.sign_out()
+        get_auth_client().auth.sign_out()
     except Exception:
         pass  # best-effort logout

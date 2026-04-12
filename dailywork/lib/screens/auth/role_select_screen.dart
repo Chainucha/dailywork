@@ -4,8 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:dailywork/core/theme/app_theme.dart';
-import 'package:dailywork/models/user_model.dart';
-import 'package:dailywork/providers/auth_provider.dart';
 import 'package:dailywork/providers/language_provider.dart';
 import 'package:dailywork/screens/shared/widgets/language_toggle_button.dart';
 
@@ -78,12 +76,7 @@ class RoleSelectScreen extends ConsumerWidget {
                     icon: Icons.construction,
                     title: strings['worker'] ?? '',
                     subtitle: 'Find daily wage work near you',
-                    onTap: () {
-                      ref
-                          .read(authProvider.notifier)
-                          .selectRole(UserRole.worker);
-                      context.go('/worker/home');
-                    },
+                    onTap: () => context.go('/worker/home'),
                   ),
                   const SizedBox(height: 16),
 
@@ -92,12 +85,7 @@ class RoleSelectScreen extends ConsumerWidget {
                     icon: Icons.business,
                     title: strings['employer'] ?? '',
                     subtitle: 'Post jobs and hire workers',
-                    onTap: () {
-                      ref
-                          .read(authProvider.notifier)
-                          .selectRole(UserRole.employer);
-                      context.go('/employer/home');
-                    },
+                    onTap: () => context.go('/employer/home'),
                   ),
                 ],
               ),

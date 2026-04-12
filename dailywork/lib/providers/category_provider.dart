@@ -1,11 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/category_model.dart';
+import '../repositories/api/api_job_repository.dart';
 import '../repositories/job_repository.dart';
-import '../repositories/mock_job_repository.dart';
 
-// The repository provider — swap MockJobRepository for ApiJobRepository to use real API
 final jobRepositoryProvider = Provider<JobRepository>((ref) {
-  return MockJobRepository();
+  return ref.watch(apiJobRepositoryProvider);
 });
 
 // Categories are loaded once per session and not autoDisposed — intentional,
