@@ -14,7 +14,7 @@ class WorkerProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final strings = ref.watch(stringsProvider);
-    final user = ref.watch(authProvider);
+    final user = ref.watch(authProvider).user;
 
     return Scaffold(
       backgroundColor: AppTheme.background,

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:dailywork/core/network/api_client.dart';
 import 'package:dailywork/core/theme/app_theme.dart';
+import 'package:dailywork/models/job_model.dart';
 import 'package:dailywork/providers/language_provider.dart';
 import 'package:dailywork/providers/job_provider.dart';
+import 'package:dailywork/repositories/api/api_application_repository.dart';
 import 'package:dailywork/screens/shared/widgets/status_badge.dart';
 import 'package:dailywork/screens/shared/widgets/language_toggle_button.dart';
 
@@ -15,15 +18,49 @@ String _formatDate(DateTime date) {
   return '${months[date.month - 1]} ${date.day}, ${date.year}';
 }
 
-class WorkerJobDetailScreen extends ConsumerWidget {
+class WorkerJobDetailScreen extends ConsumerStatefulWidget {
   const WorkerJobDetailScreen({super.key, required this.jobId});
 
   final String jobId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WorkerJobDetailScreen> createState() =>
+      _WorkerJobDetailScreenState();
+}
+
+class _WorkerJobDetailScreenState extends ConsumerState<WorkerJobDetailScreen> {
+  bool _applying = false;
+
+  Future<void> _apply(String jobId) async {
+    setState(() => _applying = true);
+    try {
+      await ref.read(apiApplicationRepositoryProvider).apply(jobId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Application submitted successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      final apiError = ApiException.extract(e);
+      final msg = apiError?.statusCode == 409
+          ? 'You have already applied for this job'
+          : apiError?.message ?? 'Could not apply. Please try again.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _applying = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final strings = ref.watch(stringsProvider);
-    final jobAsync = ref.watch(jobDetailProvider(jobId));
+    final jobAsync = ref.watch(jobDetailProvider(widget.jobId));
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -222,7 +259,7 @@ class WorkerJobDetailScreen extends ConsumerWidget {
                 ),
               ),
 
-              // Apply button
+              // Apply button — only active for open jobs
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
                 child: SizedBox(
@@ -236,22 +273,26 @@ class WorkerJobDetailScreen extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            '${strings['apply_success'] ?? 'Application submitted successfully'}: ${job.title}',
+                    onPressed: (_applying || job.status != JobStatus.open)
+                        ? null
+                        : () => _apply(job.id),
+                    child: _applying
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : Text(
+                            strings['apply'] ?? 'Apply',
+                            style: GoogleFonts.nunito(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                    child: Text(
-                      strings['apply'] ?? 'Apply',
-                      style: GoogleFonts.nunito(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
                   ),
                 ),
               ),

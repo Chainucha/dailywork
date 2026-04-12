@@ -84,7 +84,7 @@ class EmployerHomeScreen extends ConsumerWidget {
               data: (jobs) => RefreshIndicator(
                 color: AppTheme.accent,
                 onRefresh: () async {
-                  await ref.refresh(jobListProvider.future);
+                  ref.invalidate(jobListProvider);
                 },
                 child: jobs.isEmpty
                   ? ListView(
