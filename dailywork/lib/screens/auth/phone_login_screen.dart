@@ -115,6 +115,25 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
                         ),
                 ),
               ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () {
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  } else {
+                    context.go('/browse');
+                  }
+                },
+                child: Text(
+                  'Continue browsing without login',
+                  style: GoogleFonts.nunito(
+                    fontSize: 14,
+                    color: Colors.white70,
+                    decoration: TextDecoration.underline,
+                    decorationColor: Colors.white70,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
