@@ -7,8 +7,9 @@ import 'package:dailywork/providers/auth_provider.dart';
 import 'package:dailywork/screens/auth/splash_screen.dart';
 import 'package:dailywork/screens/auth/phone_login_screen.dart';
 import 'package:dailywork/screens/auth/otp_verify_screen.dart';
-import 'package:dailywork/screens/worker/worker_shell.dart';
+import 'package:dailywork/screens/browse/browse_shell.dart';
 import 'package:dailywork/screens/worker/worker_home_screen.dart';
+import 'package:dailywork/screens/worker/worker_shell.dart';
 import 'package:dailywork/screens/worker/worker_job_detail_screen.dart';
 import 'package:dailywork/screens/worker/worker_profile_screen.dart';
 import 'package:dailywork/screens/employer/employer_shell.dart';
@@ -20,22 +21,27 @@ import 'package:dailywork/screens/employer/employer_profile_screen.dart';
 // Auth → Router bridge
 // ---------------------------------------------------------------------------
 
-/// A minimal ChangeNotifier that the GoRouter can watch for auth state changes.
 class _AuthListenable extends ChangeNotifier {
   void notify() => notifyListeners();
 }
 
 // ---------------------------------------------------------------------------
-// Router
+// Route helpers
 // ---------------------------------------------------------------------------
 
 const _authRoutes = {'/login', '/verify-otp'};
 
+bool _isBrowseRoute(String loc) =>
+    loc == '/browse' || loc.startsWith('/browse/');
+
+// ---------------------------------------------------------------------------
+// Router
+// ---------------------------------------------------------------------------
+
 final routerProvider = Provider<GoRouter>((ref) {
   final listenable = _AuthListenable();
 
-  // Keep listenable in sync with auth state changes.
-  ref.listen<AuthState>(authProvider, (_, _) => listenable.notify());
+  ref.listen<AuthState>(authProvider, (_, next) => listenable.notify());
   ref.onDispose(listenable.dispose);
 
   return GoRouter(
@@ -47,16 +53,29 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       switch (auth.status) {
         case AuthStatus.unknown:
-          // Still bootstrapping — keep user on splash screen.
+          // Still bootstrapping — stay on splash.
           return loc == '/' ? null : '/';
 
+        case AuthStatus.guest:
+          // Guest can access browse routes and auth routes.
+          if (loc == '/') return '/browse';
+          if (_isBrowseRoute(loc) || _authRoutes.contains(loc)) return null;
+          return '/browse';
+
         case AuthStatus.unauthenticated:
-          // Must be on an auth route; send everyone else to login.
-          return _authRoutes.contains(loc) ? null : '/login';
+          // Actively in login flow — allow auth and browse routes.
+          if (_authRoutes.contains(loc) || _isBrowseRoute(loc)) return null;
+          return '/login';
 
         case AuthStatus.authenticated:
-          // Redirect away from auth/splash routes to the correct home.
-          if (loc == '/' || _authRoutes.contains(loc)) {
+          // Check for pending redirect from auth gate (pure read — no state emit).
+          final pending = ref.read(authProvider.notifier).consumePendingRedirect();
+          if (pending != null &&
+              (loc == '/' || _authRoutes.contains(loc) || _isBrowseRoute(loc))) {
+            return pending;
+          }
+          // Redirect away from splash, auth, and browse routes.
+          if (loc == '/' || _authRoutes.contains(loc) || _isBrowseRoute(loc)) {
             return auth.user!.role == UserRole.worker
                 ? '/worker/home'
                 : '/employer/home';
@@ -65,7 +84,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
     },
     routes: [
-      // Splash — shown while bootstrap() runs
+      // Splash — shown while bootstrap() runs.
       GoRoute(
         path: '/',
         builder: (context, state) => const SplashScreen(),
@@ -82,7 +101,24 @@ final routerProvider = Provider<GoRouter>((ref) {
             OtpVerifyScreen(phone: state.extra as String),
       ),
 
-      // Worker section
+      // Guest browse — reuses existing worker screens inside BrowseShell.
+      ShellRoute(
+        builder: (context, state, child) => BrowseShell(child: child),
+        routes: [
+          GoRoute(
+            path: '/browse',
+            builder: (context, state) => const WorkerHomeScreen(),
+          ),
+          GoRoute(
+            path: '/browse/jobs/:id',
+            builder: (context, state) => WorkerJobDetailScreen(
+              jobId: state.pathParameters['id']!,
+            ),
+          ),
+        ],
+      ),
+
+      // Worker section (authenticated only — router redirect enforces this).
       ShellRoute(
         builder: (context, state, child) => WorkerShell(child: child),
         routes: [
@@ -103,7 +139,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // Employer section
+      // Employer section (authenticated only).
       ShellRoute(
         builder: (context, state, child) => EmployerShell(child: child),
         routes: [
