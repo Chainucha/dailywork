@@ -104,7 +104,7 @@ async def optional_current_user(
         return None
     try:
         return await get_current_user(credentials)
-    except Exception:
+    except HTTPException:
         return None
 
 

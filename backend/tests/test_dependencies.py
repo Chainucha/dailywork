@@ -22,7 +22,7 @@ def test_jwt_secret_is_optional():
 
 
 import time
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
 import jwt as pyjwt
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -185,7 +185,6 @@ async def test_no_sub_claim_raises_401():
         assert exc_info.value.status_code == 401
 
 
-from unittest.mock import patch
 from fastapi.security import HTTPAuthorizationCredentials
 from app.dependencies import optional_current_user
 
@@ -205,7 +204,7 @@ async def test_optional_current_user_returns_user_with_valid_token():
     )
     fake_user = {"id": "user-123", "user_type": "worker", "is_active": True}
 
-    with patch("app.dependencies.get_current_user", return_value=fake_user):
+    with patch("app.dependencies.get_current_user", new_callable=AsyncMock, return_value=fake_user):
         result = await optional_current_user(credentials=mock_credentials)
         assert result == fake_user
 
@@ -217,6 +216,17 @@ async def test_optional_current_user_returns_none_on_invalid_token():
         scheme="Bearer", credentials="expired-token"
     )
 
-    with patch("app.dependencies.get_current_user", side_effect=Exception("Invalid")):
+    with patch("app.dependencies.get_current_user", new_callable=AsyncMock, side_effect=HTTPException(status_code=401, detail="Invalid")):
+        result = await optional_current_user(credentials=mock_credentials)
+        assert result is None
+
+
+@pytest.mark.asyncio
+async def test_optional_current_user_returns_none_on_http_exception():
+    """When get_current_user raises HTTPException (e.g. 401), should return None."""
+    mock_credentials = HTTPAuthorizationCredentials(
+        scheme="Bearer", credentials="expired-token"
+    )
+    with patch("app.dependencies.get_current_user", new_callable=AsyncMock, side_effect=HTTPException(status_code=401, detail="Unauthorized")):
         result = await optional_current_user(credentials=mock_credentials)
         assert result is None
