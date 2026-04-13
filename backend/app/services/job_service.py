@@ -102,9 +102,12 @@ async def get_jobs_feed(
     key = _cache_key(cache_params)
     redis = get_redis()
 
-    cached = await redis.get(key)
-    if cached:
-        return json.loads(cached)
+    try:
+        cached = await redis.get(key)
+        if cached:
+            return json.loads(cached)
+    except Exception:
+        cached = None  # Redis unavailable — fall through to DB
 
     offset = (page - 1) * page_size
     result = db.rpc("get_nearby_jobs", {
@@ -127,7 +130,10 @@ async def get_jobs_feed(
         "total": total,
     }
 
-    await redis.setex(key, CACHE_TTL, json.dumps(payload, default=str))
+    try:
+        await redis.setex(key, CACHE_TTL, json.dumps(payload, default=str))
+    except Exception:
+        pass  # Redis unavailable — skip caching, return result anyway
     return payload
 
 
@@ -161,6 +167,9 @@ def _plain_feed(
 
 async def invalidate_job_cache() -> None:
     redis = get_redis()
-    keys = await redis.keys(f"{CACHE_PREFIX}*")
-    if keys:
-        await redis.delete(*keys)
+    try:
+        keys = await redis.keys(f"{CACHE_PREFIX}*")
+        if keys:
+            await redis.delete(*keys)
+    except Exception:
+        pass  # Redis unavailable — cache invalidation is best-effort
