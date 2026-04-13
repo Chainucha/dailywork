@@ -37,5 +37,6 @@ def test_create_job_still_requires_auth():
         "wage_per_day": 500,
         "workers_needed": 1,
         "start_date": "2026-05-01",
+        "end_date": "2026-05-05",
     })
     assert response.status_code in (401, 403)
