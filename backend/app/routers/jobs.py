@@ -28,7 +28,7 @@ async def list_jobs(
     status: str = Query("open"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    current_user: dict | None = Depends(optional_current_user),
+    _current_user: dict | None = Depends(optional_current_user),
 ):
     db = get_supabase()
     return await job_service.get_jobs_feed(
@@ -59,7 +59,7 @@ async def create_job(
 @router.get("/{job_id}", response_model=JobResponse)
 async def get_job(
     job_id: str,
-    current_user: dict | None = Depends(optional_current_user),
+    _current_user: dict | None = Depends(optional_current_user),
 ):
     db = get_supabase()
     result = db.table("jobs").select(

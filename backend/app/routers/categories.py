@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, UUID4
+from pydantic import BaseModel
+from uuid import UUID
 from app.dependencies import optional_current_user
 from app.supabase_client import get_supabase
 
@@ -7,7 +8,7 @@ router = APIRouter(tags=["categories"])
 
 
 class CategoryResponse(BaseModel):
-    id: UUID4
+    id: UUID
     name: str
     icon_name: str
 

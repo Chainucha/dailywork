@@ -99,6 +99,8 @@ async def optional_current_user(
     """Like get_current_user but returns None instead of raising 401.
 
     Used for public endpoints where auth enhances (but isn't required for) the response.
+    Intentionally treats both missing tokens AND invalid/expired tokens as anonymous —
+    this supports the browse-first UX where expired sessions can still view public content.
     """
     if credentials is None:
         return None
