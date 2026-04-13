@@ -18,7 +18,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
   final _otpController = TextEditingController();
   bool _loading = false;
   String? _error;
-  bool _showRolePicker = false;
+  final bool _showRolePicker = true;
   String? _selectedRole;
 
   @override
@@ -46,18 +46,9 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
       // Router redirect handles navigation once AuthStatus becomes authenticated
     } catch (e) {
       final apiError = ApiException.extract(e);
-      if (apiError != null &&
-          apiError.statusCode == 400 &&
-          apiError.message.toLowerCase().contains('user_type')) {
-        setState(() {
-          _showRolePicker = true;
-          _error = null;
-        });
-      } else {
-        setState(
-          () => _error = apiError?.message ?? 'Verification failed. Please try again.',
-        );
-      }
+      setState(
+        () => _error = apiError?.message ?? 'Verification failed. Please try again.',
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -116,7 +107,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
               if (_showRolePicker) ...[
                 const SizedBox(height: 24),
                 Text(
-                  'New user? Choose your role:',
+                  'Select your role:',
                   style: GoogleFonts.nunito(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -146,7 +137,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                 height: 52,
                 child: ElevatedButton(
                   onPressed:
-                      _loading || (_showRolePicker && _selectedRole == null)
+                      _loading || _selectedRole == null
                           ? null
                           : () => _verify(userType: _selectedRole),
                   style: ElevatedButton.styleFrom(
@@ -163,7 +154,7 @@ class _OtpVerifyScreenState extends ConsumerState<OtpVerifyScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : Text(
-                          _showRolePicker ? 'Create Account' : 'Verify',
+                          'Verify',
                           style: GoogleFonts.nunito(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
