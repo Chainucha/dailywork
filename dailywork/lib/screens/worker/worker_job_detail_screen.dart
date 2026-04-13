@@ -276,12 +276,12 @@ class _WorkerJobDetailScreenState extends ConsumerState<WorkerJobDetailScreen> {
                     ),
                     onPressed: (_applying || job.status != JobStatus.open)
                         ? null
-                        : () {
+                        : () async {
                             if (!requireAuth(ref, context,
                                 intendedPath: '/worker/jobs/${job.id}')) {
                               return;
                             }
-                            _apply(job.id);
+                            await _apply(job.id);
                           },
                     child: _applying
                         ? const SizedBox(
