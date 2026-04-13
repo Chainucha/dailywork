@@ -9,6 +9,7 @@ import 'package:dailywork/providers/job_provider.dart';
 import 'package:dailywork/repositories/api/api_application_repository.dart';
 import 'package:dailywork/screens/shared/widgets/status_badge.dart';
 import 'package:dailywork/screens/shared/widgets/language_toggle_button.dart';
+import 'package:dailywork/core/router/auth_gate.dart';
 
 String _formatDate(DateTime date) {
   const months = [
@@ -275,7 +276,13 @@ class _WorkerJobDetailScreenState extends ConsumerState<WorkerJobDetailScreen> {
                     ),
                     onPressed: (_applying || job.status != JobStatus.open)
                         ? null
-                        : () => _apply(job.id),
+                        : () {
+                            if (!requireAuth(ref, context,
+                                intendedPath: '/worker/jobs/${job.id}')) {
+                              return;
+                            }
+                            _apply(job.id);
+                          },
                     child: _applying
                         ? const SizedBox(
                             width: 24,
