@@ -118,8 +118,9 @@ class _PhoneLoginScreenState extends ConsumerState<PhoneLoginScreen> {
               const SizedBox(height: 16),
               TextButton(
                 onPressed: () {
-                  if (Navigator.of(context).canPop()) {
-                    Navigator.of(context).pop();
+                  if (!mounted) return;
+                  if (context.canPop()) {
+                    context.pop();
                   } else {
                     context.go('/browse');
                   }
