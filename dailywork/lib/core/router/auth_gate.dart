@@ -16,10 +16,9 @@ import 'package:dailywork/providers/auth_provider.dart';
 bool requireAuth(WidgetRef ref, BuildContext context,
     {required String intendedPath}) {
   final auth = ref.read(authProvider);
-  if (auth.status == AuthStatus.authenticated) {
-    return true;
-  }
+  if (auth.status == AuthStatus.authenticated) return true;
   ref.read(authProvider.notifier).setPendingRedirect(intendedPath);
-  context.push('/login');
+  if (!context.mounted) return false;
+  context.go('/login');
   return false;
 }

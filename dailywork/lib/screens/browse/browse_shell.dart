@@ -11,15 +11,24 @@ class BrowseShell extends ConsumerWidget {
 
   final Widget child;
 
+  int _indexForLocation(String location) {
+    if (location.startsWith('/login')) return 1;
+    return 0; // Jobs tab
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final strings = ref.watch(stringsProvider);
+    final location = GoRouterState.of(context).uri.path;
 
     return Scaffold(
       body: child,
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0,
+        currentIndex: _indexForLocation(location),
         backgroundColor: Colors.white,
+        // Intentional: BrowseShell uses accent (amber) for selected items to
+        // visually distinguish the guest browse context from the authenticated
+        // worker/employer shells which use the theme's primary (blue).
         selectedItemColor: AppTheme.accent,
         unselectedItemColor: Colors.grey,
         elevation: 8,
@@ -37,7 +46,7 @@ class BrowseShell extends ConsumerWidget {
             case 0:
               context.go('/browse');
             case 1:
-              context.push('/login');
+              context.go('/login');
           }
         },
         items: [
