@@ -17,6 +17,8 @@ class AuthState {
   AuthState copyWith({
     UserModel? user,
     AuthStatus? status,
+    // To explicitly null out pendingRedirect, pass clearRedirect: true.
+    // Passing pendingRedirect: null has no effect (treated as "not provided").
     String? pendingRedirect,
     bool clearRedirect = false,
   }) =>
@@ -53,6 +55,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   /// Transitions to guest browse mode.
+  /// Note: intentionally creates a fresh [AuthState], which drops any
+  /// [pendingRedirect] that was previously set. If the user chose to continue
+  /// browsing after being prompted to log in, their prior destination is
+  /// considered abandoned.
   void browseAsGuest() {
     state = const AuthState(status: AuthStatus.guest);
   }
@@ -62,13 +68,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(pendingRedirect: path);
   }
 
-  /// Clears the pending redirect and returns it (or null).
+  /// Returns the pending redirect path (if any) without clearing state.
+  /// The path is naturally cleared when [verifyOtp] emits a fresh [AuthState]
+  /// (which defaults [AuthState.pendingRedirect] to null). Calling this from
+  /// the router's redirect callback is safe — no extra state notify is fired.
   String? consumePendingRedirect() {
-    final path = state.pendingRedirect;
-    if (path != null) {
-      state = state.copyWith(clearRedirect: true);
-    }
-    return path;
+    return state.pendingRedirect;
   }
 
   /// Sends OTP to [phone]. Throws [ApiException] on failure.
