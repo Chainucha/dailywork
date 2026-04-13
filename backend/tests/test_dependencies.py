@@ -183,3 +183,40 @@ async def test_no_sub_claim_raises_401():
         with pytest.raises(HTTPException) as exc_info:
             await get_current_user(FakeCredentials(token))
         assert exc_info.value.status_code == 401
+
+
+from unittest.mock import patch
+from fastapi.security import HTTPAuthorizationCredentials
+from app.dependencies import optional_current_user
+
+
+@pytest.mark.asyncio
+async def test_optional_current_user_returns_none_without_token():
+    """When no Authorization header is present, should return None."""
+    result = await optional_current_user(credentials=None)
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_optional_current_user_returns_user_with_valid_token():
+    """When a valid token is present, should return the user dict."""
+    mock_credentials = HTTPAuthorizationCredentials(
+        scheme="Bearer", credentials="valid-token"
+    )
+    fake_user = {"id": "user-123", "user_type": "worker", "is_active": True}
+
+    with patch("app.dependencies.get_current_user", return_value=fake_user):
+        result = await optional_current_user(credentials=mock_credentials)
+        assert result == fake_user
+
+
+@pytest.mark.asyncio
+async def test_optional_current_user_returns_none_on_invalid_token():
+    """When token is invalid/expired, should return None (not raise)."""
+    mock_credentials = HTTPAuthorizationCredentials(
+        scheme="Bearer", credentials="expired-token"
+    )
+
+    with patch("app.dependencies.get_current_user", side_effect=Exception("Invalid")):
+        result = await optional_current_user(credentials=mock_credentials)
+        assert result is None

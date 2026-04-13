@@ -90,6 +90,24 @@ async def get_current_user(
     return result.data[0]
 
 
+optional_bearer = HTTPBearer(auto_error=False)
+
+
+async def optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_bearer),
+) -> dict | None:
+    """Like get_current_user but returns None instead of raising 401.
+
+    Used for public endpoints where auth enhances (but isn't required for) the response.
+    """
+    if credentials is None:
+        return None
+    try:
+        return await get_current_user(credentials)
+    except Exception:
+        return None
+
+
 async def require_worker(current_user: dict = Depends(get_current_user)):
     if current_user["user_type"] != "worker":
         raise HTTPException(
