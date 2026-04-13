@@ -71,12 +71,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Check for pending redirect from auth gate (pure read — no state emit).
           final pending = ref.read(authProvider.notifier).consumePendingRedirect();
           if (pending != null &&
+              loc != pending &&
               (loc == '/' || _authRoutes.contains(loc) || _isBrowseRoute(loc))) {
             return pending;
           }
           // Redirect away from splash, auth, and browse routes.
           if (loc == '/' || _authRoutes.contains(loc) || _isBrowseRoute(loc)) {
-            return auth.user!.role == UserRole.worker
+            final user = auth.user;
+            if (user == null) return '/';
+            return user.role == UserRole.worker
                 ? '/worker/home'
                 : '/employer/home';
           }

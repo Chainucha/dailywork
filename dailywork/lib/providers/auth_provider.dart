@@ -95,7 +95,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
       userType: userType,
     );
     final user = await _userRepo.getMe();
-    state = AuthState(user: user, status: AuthStatus.authenticated);
+    state = AuthState(
+      user: user,
+      status: AuthStatus.authenticated,
+      pendingRedirect: state.pendingRedirect,
+    );
     return roleStr;
   }
 
