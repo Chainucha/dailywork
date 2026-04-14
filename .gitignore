@@ -119,3 +119,6 @@ app.*.symbols
 !/dev/ci/**/Gemfile.lock
 # Git worktrees
 .worktrees/
+.UI_example/
+.docs/
+.claude/
