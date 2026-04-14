@@ -30,8 +30,8 @@ class ApiJobRepository implements JobRepository {
         'lat': 12.9716,
         'lng': 77.5946,
         'radius_km': 25,
-        if (categoryId != null) 'category_id': categoryId,
-        if (apiStatus != null) 'status': apiStatus,
+        'category_id': ?categoryId,
+        'status': ?apiStatus,
         // wage filters are applied client-side (API does not support them)
       },
     );
