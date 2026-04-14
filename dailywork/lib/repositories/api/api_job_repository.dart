@@ -11,18 +11,8 @@ class ApiJobRepository implements JobRepository {
 
   ApiJobRepository(this._dio);
 
-  static String _statusName(JobStatus s) => switch (s) {
-    JobStatus.inProgress => 'in_progress',
-    _ => s.name,
-  };
-
   @override
   Future<List<JobModel>> getJobs({String? categoryId, JobFilter? filter}) async {
-    // Send a single status to the API when exactly one is selected; otherwise fetch all.
-    final String? apiStatus = (filter != null && filter.statuses.length == 1)
-        ? _statusName(filter.statuses.first)
-        : null;
-
     final response = await _dio.get<Map<String, dynamic>>(
       '/jobs/',
       queryParameters: {
@@ -31,25 +21,12 @@ class ApiJobRepository implements JobRepository {
         'lng': 77.5946,
         'radius_km': 25,
         'category_id': ?categoryId,
-        'status': ?apiStatus,
-        // wage filters are applied client-side (API does not support them)
       },
     );
     final data = response.data!;
-    final jobs = (data['data'] as List<dynamic>)
+    return (data['data'] as List<dynamic>)
         .map((j) => JobModel.fromJson(j as Map<String, dynamic>))
         .toList();
-
-    if (filter == null) return jobs;
-
-    // Apply client-side filters
-    return jobs.where((job) {
-      // Status: if multiple statuses selected, filter client-side
-      if (filter.statuses.isNotEmpty && !filter.statuses.contains(job.status)) return false;
-      if (job.wagePerDay < filter.minWage) return false;
-      if (job.wagePerDay > filter.maxWage) return false;
-      return true;
-    }).toList();
   }
 
   @override

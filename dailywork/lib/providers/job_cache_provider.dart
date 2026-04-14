@@ -12,6 +12,7 @@ class JobCacheNotifier extends AsyncNotifier<List<JobModel>> {
   final Map<String?, DateTime> _fetchedAt = {};
   final Map<String?, Future<List<JobModel>>> _inFlight = {};
   Timer? _timer;
+  bool _disposeRegistered = false;
 
   // The repository is set once per build() call
   late ApiJobRepository _repo;
@@ -27,15 +28,16 @@ class JobCacheNotifier extends AsyncNotifier<List<JobModel>> {
     // Obtain the repository via read (not watch) to avoid rebuild loops.
     _repo = ref.read(apiJobRepositoryProvider);
 
+    // Ensure the timer is cancelled when the notifier is disposed — register once.
+    if (!_disposeRegistered) {
+      _disposeRegistered = true;
+      ref.onDispose(() => _timer?.cancel());
+    }
+
     // Reset the periodic refresh timer for the new category.
     _timer?.cancel();
     _timer = Timer.periodic(_refreshDuration, (_) {
       getJobs(ref.read(selectedCategoryProvider), force: true).ignore();
-    });
-
-    // Ensure the timer is cancelled when the notifier is disposed.
-    ref.onDispose(() {
-      _timer?.cancel();
     });
 
     // Respect cache freshness on the initial load.
@@ -78,7 +80,11 @@ class JobCacheNotifier extends AsyncNotifier<List<JobModel>> {
       state = const AsyncLoading();
     }
 
-    if (_inFlight.containsKey(categoryId)) return _inFlight[categoryId]!;
+    if (_inFlight.containsKey(categoryId)) {
+      return _inFlight[categoryId]!.catchError(
+        (Object e) => staleData ?? <JobModel>[],
+      );
+    }
 
     final fetchFuture = _fetchAndCache(categoryId);
     _inFlight[categoryId] = fetchFuture;
