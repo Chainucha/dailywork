@@ -6,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:dailywork/core/theme/app_theme.dart';
 import 'package:dailywork/providers/language_provider.dart';
 import 'package:dailywork/providers/job_provider.dart';
+import 'package:dailywork/providers/job_cache_provider.dart';
+import 'package:dailywork/providers/category_provider.dart';
 import 'package:dailywork/screens/shared/widgets/job_card.dart';
 import 'package:dailywork/screens/shared/widgets/category_chip_bar.dart';
 import 'package:dailywork/screens/shared/widgets/filter_bottom_sheet.dart';
@@ -70,7 +72,10 @@ class WorkerHomeScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
-                      onPressed: () => ref.invalidate(jobListProvider),
+                      onPressed: () {
+                        final category = ref.read(selectedCategoryProvider);
+                        ref.read(jobCacheProvider.notifier).getJobs(category, force: true).ignore();
+                      },
                       icon: const Icon(Icons.refresh),
                       label: const Text('Retry'),
                       style: ElevatedButton.styleFrom(
@@ -84,7 +89,8 @@ class WorkerHomeScreen extends ConsumerWidget {
               data: (jobs) => RefreshIndicator(
                 color: AppTheme.accent,
                 onRefresh: () async {
-                  ref.invalidate(jobListProvider);
+                  final category = ref.read(selectedCategoryProvider);
+                  await ref.read(jobCacheProvider.notifier).getJobs(category, force: true);
                 },
                 child: jobs.isEmpty
                   ? ListView(
