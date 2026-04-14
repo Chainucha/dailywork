@@ -10,6 +10,7 @@ class JobCacheNotifier extends AsyncNotifier<List<JobModel>> {
   // Per-category caches keyed by categoryId (null = "All")
   final Map<String?, List<JobModel>> _cache = {};
   final Map<String?, DateTime> _fetchedAt = {};
+  final Map<String?, Future<List<JobModel>>> _inFlight = {};
   Timer? _timer;
 
   // The repository is set once per build() call
@@ -29,7 +30,7 @@ class JobCacheNotifier extends AsyncNotifier<List<JobModel>> {
     // Reset the periodic refresh timer for the new category.
     _timer?.cancel();
     _timer = Timer.periodic(_refreshDuration, (_) {
-      getJobs(ref.read(selectedCategoryProvider), force: true);
+      getJobs(ref.read(selectedCategoryProvider), force: true).ignore();
     });
 
     // Ensure the timer is cancelled when the notifier is disposed.
@@ -77,8 +78,12 @@ class JobCacheNotifier extends AsyncNotifier<List<JobModel>> {
       state = const AsyncLoading();
     }
 
+    if (_inFlight.containsKey(categoryId)) return _inFlight[categoryId]!;
+
+    final fetchFuture = _fetchAndCache(categoryId);
+    _inFlight[categoryId] = fetchFuture;
     try {
-      final jobs = await _fetchAndCache(categoryId);
+      final jobs = await fetchFuture;
       state = AsyncData(jobs);
       return jobs;
     } catch (e, st) {
@@ -87,7 +92,9 @@ class JobCacheNotifier extends AsyncNotifier<List<JobModel>> {
         state = AsyncError(e, st);
       }
       // If stale data was already shown, leave it in place.
-      rethrow;
+      return staleData ?? [];
+    } finally {
+      _inFlight.remove(categoryId);
     }
   }
 
