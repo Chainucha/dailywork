@@ -4,13 +4,15 @@ from typing import Literal
 
 class SendOtpRequest(BaseModel):
     phone: str
-    user_type: Literal["worker", "employer"] | None = None  # required on first sign-up
 
 
 class VerifyOtpRequest(BaseModel):
     phone: str
     token: str
-    user_type: Literal["worker", "employer"] | None = None  # required for new users
+
+
+class SetupProfileRequest(BaseModel):
+    user_type: Literal["worker", "employer"]
 
 
 class RefreshRequest(BaseModel):
@@ -22,7 +24,8 @@ class TokenResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     user_id: str
-    user_type: str
+    user_type: str | None = None
+    is_new_user: bool = False
 
 
 class MessageResponse(BaseModel):

@@ -90,6 +90,30 @@ async def get_current_user(
     return result.data[0]
 
 
+async def get_jwt_payload(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer),
+) -> dict:
+    """Decode JWT without requiring a users table row.
+    Used for /auth/setup-profile, called by newly verified users who don't
+    have a users row yet. Phone is included in Supabase's phone-auth JWT.
+    """
+    token = credentials.credentials
+    try:
+        payload = _decode_token(token)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        )
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
+    return {"sub": user_id, "phone": payload.get("phone", "")}
+
+
 optional_bearer = HTTPBearer(auto_error=False)
 
 

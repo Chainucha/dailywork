@@ -21,5 +21,6 @@ def get_auth_client() -> Client:
     Used exclusively for Supabase Auth operations (send-otp, verify-otp,
     refresh, sign-out). Creating a new instance each time means session
     changes from auth flows never contaminate the shared DB client above.
+    Uses the anon key — Supabase Auth API requires it, not the service role key.
     """
-    return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+    return create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)

@@ -5,7 +5,8 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     # Supabase
     SUPABASE_URL: str
-    SUPABASE_SERVICE_ROLE_KEY: str
+    SUPABASE_ANON_KEY: str                 # anon/public key — used for Auth API calls
+    SUPABASE_SERVICE_ROLE_KEY: str    # service role key — used for DB (bypasses RLS)
 
     # JWT — JWKS (RS256) is primary; HS256 secret is optional fallback
     SUPABASE_JWKS_URL: str = ""

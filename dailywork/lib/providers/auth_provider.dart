@@ -4,7 +4,7 @@ import 'package:dailywork/models/user_model.dart';
 import 'package:dailywork/repositories/api/api_auth_repository.dart';
 import 'package:dailywork/repositories/api/api_user_repository.dart';
 
-enum AuthStatus { unknown, unauthenticated, guest, authenticated }
+enum AuthStatus { unknown, unauthenticated, guest, needsProfile, authenticated }
 
 class AuthState {
   final UserModel? user;
@@ -81,26 +81,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await _authRepo.sendOtp(phone);
   }
 
-  /// Verifies OTP and loads the user profile.
-  /// [userType] is only needed for brand-new users.
-  /// Returns the user's role string ('worker' or 'employer').
-  Future<String> verifyOtp({
-    required String phone,
-    required String token,
-    String? userType,
-  }) async {
-    final roleStr = await _authRepo.verifyOtp(
-      phone: phone,
-      token: token,
-      userType: userType,
-    );
+  /// Verifies OTP. For new users, sets [needsProfile] so the router sends
+  /// them to the role-select screen. For returning users, loads the profile
+  /// and sets [authenticated] directly.
+  Future<void> verifyOtp({required String phone, required String token}) async {
+    final isNewUser = await _authRepo.verifyOtp(phone: phone, token: token);
+    if (isNewUser) {
+      state = state.copyWith(status: AuthStatus.needsProfile);
+      return;
+    }
     final user = await _userRepo.getMe();
     state = AuthState(
       user: user,
       status: AuthStatus.authenticated,
       pendingRedirect: state.pendingRedirect,
     );
-    return roleStr;
+  }
+
+  /// Called from the role-select screen after a new user picks their role.
+  Future<void> setupProfile(String userType) async {
+    await _authRepo.setupProfile(userType);
+    final user = await _userRepo.getMe();
+    state = AuthState(
+      user: user,
+      status: AuthStatus.authenticated,
+      pendingRedirect: state.pendingRedirect,
+    );
   }
 
   Future<void> logout() async {

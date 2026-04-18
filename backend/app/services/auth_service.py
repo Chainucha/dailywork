@@ -13,7 +13,7 @@ def send_otp(phone: str) -> dict:
     return {"message": "OTP sent"}
 
 
-def verify_otp(phone: str, token: str, user_type: str | None) -> dict:
+def verify_otp(phone: str, token: str) -> dict:
     # Use a fresh auth client — verify_otp sets the user session internally,
     # which would overwrite the service role key on a shared client.
     try:
@@ -29,42 +29,52 @@ def verify_otp(phone: str, token: str, user_type: str | None) -> dict:
     auth_user = result.user
     session = result.session
 
-    # All DB writes use the singleton service-role client (bypasses RLS).
     db = get_supabase()
     existing = db.table("users").select("*").eq("id", auth_user.id).execute()
 
     if existing.data:
         user = existing.data[0]
-    else:
-        # New user — user_type is required
-        if not user_type:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="user_type is required for new users",
-            )
-        user_row = db.table("users").insert({
-            "id": auth_user.id,
-            "phone_number": phone,
-            "user_type": user_type,
-        }).execute()
-        user = user_row.data[0]
+        return {
+            "access_token": session.access_token,
+            "refresh_token": session.refresh_token,
+            "token_type": "bearer",
+            "user_id": user["id"],
+            "user_type": user["user_type"],
+            "is_new_user": False,
+        }
 
-        # Create matching profile
-        if user_type == "worker":
-            db.table("worker_profiles").insert({"user_id": user["id"]}).execute()
-        else:
-            db.table("employer_profiles").insert({
-                "user_id": user["id"],
-                "business_name": "My Business",  # placeholder — user updates via PATCH
-            }).execute()
-
+    # New user — return tokens so the client can call /auth/setup-profile next.
     return {
         "access_token": session.access_token,
         "refresh_token": session.refresh_token,
         "token_type": "bearer",
-        "user_id": user["id"],
-        "user_type": user["user_type"],
+        "user_id": auth_user.id,
+        "user_type": None,
+        "is_new_user": True,
     }
+
+
+def setup_profile(user_id: str, phone: str, user_type: str) -> None:
+    db = get_supabase()
+
+    # Guard against duplicate calls (e.g. user taps twice)
+    if db.table("users").select("id").eq("id", user_id).execute().data:
+        return
+
+    user_row = db.table("users").insert({
+        "id": user_id,
+        "phone_number": phone,
+        "user_type": user_type,
+    }).execute()
+    user = user_row.data[0]
+
+    if user_type == "worker":
+        db.table("worker_profiles").insert({"user_id": user["id"]}).execute()
+    else:
+        db.table("employer_profiles").insert({
+            "user_id": user["id"],
+            "business_name": "My Business",
+        }).execute()
 
 
 def refresh_session(refresh_token: str) -> dict:

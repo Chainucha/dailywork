@@ -13,26 +13,23 @@ class ApiAuthRepository {
     await _dio.post('/auth/send-otp', data: {'phone': phone});
   }
 
-  /// Returns the user's user_type ('worker' or 'employer').
-  /// [userType] is only required for first-time users.
-  /// Saves tokens to secure storage on success.
-  Future<String> verifyOtp({
-    required String phone,
-    required String token,
-    String? userType,
-  }) async {
-    final body = {
-      'phone': phone,
-      'token': token,
-      'user_type': ?userType,
-    };
-    final response = await _dio.post<Map<String, dynamic>>('/auth/verify-otp', data: body);
+  /// Verifies OTP. Returns `isNewUser: true` when the user has no profile yet.
+  /// Always saves tokens to secure storage on success.
+  Future<bool> verifyOtp({required String phone, required String token}) async {
+    final response = await _dio.post<Map<String, dynamic>>(
+      '/auth/verify-otp',
+      data: {'phone': phone, 'token': token},
+    );
     final data = response.data!;
     await _tokenStorage.saveTokens(
       access: data['access_token'] as String,
       refresh: data['refresh_token'] as String,
     );
-    return data['user_type'] as String;
+    return data['is_new_user'] as bool? ?? false;
+  }
+
+  Future<void> setupProfile(String userType) async {
+    await _dio.post('/auth/setup-profile', data: {'user_type': userType});
   }
 
   Future<void> logout() async {

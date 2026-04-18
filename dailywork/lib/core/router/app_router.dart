@@ -7,6 +7,7 @@ import 'package:dailywork/providers/auth_provider.dart';
 import 'package:dailywork/screens/auth/splash_screen.dart';
 import 'package:dailywork/screens/auth/phone_login_screen.dart';
 import 'package:dailywork/screens/auth/otp_verify_screen.dart';
+import 'package:dailywork/screens/auth/role_select_screen.dart';
 import 'package:dailywork/screens/browse/browse_shell.dart';
 import 'package:dailywork/screens/worker/worker_home_screen.dart';
 import 'package:dailywork/screens/worker/worker_shell.dart';
@@ -29,7 +30,7 @@ class _AuthListenable extends ChangeNotifier {
 // Route helpers
 // ---------------------------------------------------------------------------
 
-const _authRoutes = {'/login', '/verify-otp'};
+const _authRoutes = {'/login', '/verify-otp', '/select-role'};
 
 bool _isBrowseRoute(String loc) =>
     loc == '/browse' || loc.startsWith('/browse/');
@@ -67,6 +68,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           if (_authRoutes.contains(loc) || _isBrowseRoute(loc)) return null;
           return '/login';
 
+        case AuthStatus.needsProfile:
+          // OTP verified but no profile yet — force role selection.
+          return loc == '/select-role' ? null : '/select-role';
+
         case AuthStatus.authenticated:
           // Check for pending redirect from auth gate (pure read — no state emit).
           final pending = ref.read(authProvider.notifier).consumePendingRedirect();
@@ -102,6 +107,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/verify-otp',
         builder: (context, state) =>
             OtpVerifyScreen(phone: state.extra as String),
+      ),
+      GoRoute(
+        path: '/select-role',
+        builder: (context, state) => const RoleSelectScreen(),
       ),
 
       // Guest browse — reuses existing worker screens inside BrowseShell.
