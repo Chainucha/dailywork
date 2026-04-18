@@ -122,3 +122,5 @@ app.*.symbols
 .UI_example/
 .docs/
 .claude/
+CLAUDE.md
+.UI_example/
