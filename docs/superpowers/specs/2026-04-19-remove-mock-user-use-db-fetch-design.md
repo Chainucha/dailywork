@@ -292,7 +292,7 @@ Route: `/name-entry` with a typed argument (`NameEntryMode.onboardingWorker` or 
 
 ### `EmployerProfileScreen`
 
-- Header: same edit icon → `/name-entry` edit mode. For employers this still edits `users.display_name`; the model will keep showing `business_name` via the precedence order, so the edit feels odd for employers. **Follow-up question for the plan:** should employers also be able to edit their display name, or only workers? The spec assumes the edit icon appears for both, but this is worth reconfirming during implementation.
+- **No edit-name icon.** Employers display `business_name`, which is owned by the employer profile, not `users.display_name`. Editing `display_name` would have no visible effect because the Flutter precedence rule always prefers `business_name` for employers. A future "Edit business info" screen will own `business_name` edits; out of scope here.
 - Posted Jobs card: replace hardcoded `'12 jobs posted'` with `'${user.employerProfile?.jobsPosted ?? 0} jobs posted'`.
 - "Coming soon" line stays — unrelated to this spec; refers to a future posted-jobs *list*.
 
@@ -371,5 +371,4 @@ Route: `/name-entry` with a typed argument (`NameEntryMode.onboardingWorker` or 
 
 ## Open Questions / Follow-ups
 
-- **Edit icon on employer profile:** employers' displayed name comes from `business_name`, but the edit icon would edit `display_name` — which the precedence rule then hides. Implementation should either (a) hide the edit icon for employers, or (b) edit `business_name` for employers instead. To resolve when writing the implementation plan.
 - Exact filename conventions for the Supabase migration (timestamp format) should follow whatever convention the existing migrations in `supabase/migrations/` use. (Dir wasn't inspected during brainstorming.)
