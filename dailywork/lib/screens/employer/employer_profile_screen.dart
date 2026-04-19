@@ -118,7 +118,7 @@ class EmployerProfileScreen extends ConsumerWidget {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              '12 jobs posted',
+                              '${user.employerProfile?.jobsPosted ?? 0} jobs posted',
                               style: GoogleFonts.nunito(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,

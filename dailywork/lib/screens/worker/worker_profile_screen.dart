@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 import 'package:dailywork/core/theme/app_theme.dart';
 import 'package:dailywork/providers/auth_provider.dart';
 import 'package:dailywork/providers/language_provider.dart';
-import 'package:dailywork/repositories/mock_users.dart';
+import 'package:dailywork/repositories/api/api_review_repository.dart';
+import 'package:dailywork/screens/auth/name_entry_screen.dart';
 import 'package:dailywork/screens/shared/widgets/language_toggle_button.dart';
 
 class WorkerProfileScreen extends ConsumerWidget {
@@ -32,20 +35,25 @@ class WorkerProfileScreen extends ConsumerWidget {
           : ListView(
               padding: const EdgeInsets.only(bottom: 24),
               children: [
-                // Profile header card
                 _ProfileHeader(
                   displayName: user.displayName,
                   ratingAvg: user.workerProfile?.ratingAvg ?? 0,
                   jobsCompleted: user.workerProfile?.jobsCompleted ?? 0,
-                  experienceYears: user.workerProfile?.experienceYears ?? 0,
+                  totalReviews: user.workerProfile?.totalReviews ?? 0,
                   strings: strings,
+                  onEditName: () => context.push(
+                    '/name-entry',
+                    extra: NameEntryArgs(
+                      mode: NameEntryMode.edit,
+                      initialName: user.displayName,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
 
                 // Skills section
                 Card(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -87,10 +95,9 @@ class WorkerProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // Stats section
+                // Stats section — Reviews + Jobs Done
                 Card(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -99,15 +106,8 @@ class WorkerProfileScreen extends ConsumerWidget {
                     child: Column(
                       children: [
                         _StatRow(
-                          label: strings['reliability'] ?? 'Reliability',
-                          value:
-                              '${user.workerProfile?.reliabilityPercent.toStringAsFixed(0) ?? '0'}%',
-                        ),
-                        const Divider(height: 20),
-                        _StatRow(
-                          label: strings['experience'] ?? 'Experience',
-                          value:
-                              '${user.workerProfile?.experienceYears ?? 0} ${strings['years'] ?? 'Yrs'}',
+                          label: strings['reviews'] ?? 'Reviews',
+                          value: '${user.workerProfile?.totalReviews ?? 0}',
                         ),
                         const Divider(height: 20),
                         _StatRow(
@@ -120,10 +120,9 @@ class WorkerProfileScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // Reviews section
+                // Reviews section — live from backend
                 Card(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -141,12 +140,7 @@ class WorkerProfileScreen extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        ...MockUsers.mockWorkerReviews.asMap().entries.map(
-                          (entry) => _ReviewItem(
-                            review: entry.value,
-                            isLast: entry.key == MockUsers.mockWorkerReviews.length - 1,
-                          ),
-                        ),
+                        _ReviewsList(userId: user.id),
                       ],
                     ),
                   ),
@@ -157,20 +151,71 @@ class WorkerProfileScreen extends ConsumerWidget {
   }
 }
 
+class _ReviewsList extends ConsumerWidget {
+  const _ReviewsList({required this.userId});
+  final String userId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncPage = ref.watch(userReviewsProvider(userId));
+
+    return asyncPage.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (err, st) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Couldn\u2019t load reviews',
+            style: GoogleFonts.nunito(fontSize: 13, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            onPressed: () => ref.invalidate(userReviewsProvider(userId)),
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+      data: (page) {
+        if (page.items.isEmpty) {
+          return Text(
+            'No reviews yet',
+            style: GoogleFonts.nunito(fontSize: 13, color: Colors.grey[600]),
+          );
+        }
+        return Column(
+          children: page.items
+              .asMap()
+              .entries
+              .map((entry) => _ReviewItem(
+                    review: entry.value,
+                    isLast: entry.key == page.items.length - 1,
+                  ))
+              .toList(),
+        );
+      },
+    );
+  }
+}
+
 class _ProfileHeader extends StatelessWidget {
   const _ProfileHeader({
     required this.displayName,
     required this.ratingAvg,
     required this.jobsCompleted,
-    required this.experienceYears,
+    required this.totalReviews,
     required this.strings,
+    required this.onEditName,
   });
 
   final String displayName;
   final double ratingAvg;
   final int jobsCompleted;
-  final int experienceYears;
+  final int totalReviews;
   final Map<String, String> strings;
+  final VoidCallback onEditName;
 
   @override
   Widget build(BuildContext context) {
@@ -195,13 +240,27 @@ class _ProfileHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Text(
-            displayName,
-            style: GoogleFonts.nunito(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(
+                  displayName,
+                  style: GoogleFonts.nunito(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                tooltip: 'Edit name',
+                icon: const Icon(Icons.edit, color: Colors.white, size: 18),
+                onPressed: onEditName,
+              ),
+            ],
           ),
           const SizedBox(height: 4),
           Container(
@@ -225,16 +284,15 @@ class _ProfileHeader extends StatelessWidget {
             children: [
               _HeaderStat(
                 value: ratingAvg.toStringAsFixed(1),
-                label: '★ Rating',
+                label: '\u2605 Rating',
               ),
               _HeaderStat(
                 value: '$jobsCompleted',
                 label: strings['jobs_completed'] ?? 'Jobs Done',
               ),
               _HeaderStat(
-                value:
-                    '$experienceYears ${strings['years'] ?? 'Yrs'}',
-                label: strings['experience'] ?? 'Experience',
+                value: '$totalReviews',
+                label: strings['reviews'] ?? 'Reviews',
               ),
             ],
           ),
@@ -246,7 +304,6 @@ class _ProfileHeader extends StatelessWidget {
 
 class _HeaderStat extends StatelessWidget {
   const _HeaderStat({required this.value, required this.label});
-
   final String value;
   final String label;
 
@@ -265,10 +322,7 @@ class _HeaderStat extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           label,
-          style: GoogleFonts.nunito(
-            fontSize: 11,
-            color: Colors.white70,
-          ),
+          style: GoogleFonts.nunito(fontSize: 11, color: Colors.white70),
         ),
       ],
     );
@@ -277,7 +331,6 @@ class _HeaderStat extends StatelessWidget {
 
 class _StatRow extends StatelessWidget {
   const _StatRow({required this.label, required this.value});
-
   final String label;
   final String value;
 
@@ -288,10 +341,7 @@ class _StatRow extends StatelessWidget {
       children: [
         Text(
           label,
-          style: GoogleFonts.nunito(
-            fontSize: 14,
-            color: Colors.grey[600],
-          ),
+          style: GoogleFonts.nunito(fontSize: 14, color: Colors.grey[600]),
         ),
         Text(
           value,
@@ -308,16 +358,12 @@ class _StatRow extends StatelessWidget {
 
 class _ReviewItem extends StatelessWidget {
   const _ReviewItem({required this.review, required this.isLast});
-
-  final Map<String, dynamic> review;
+  final Review review;
   final bool isLast;
 
   @override
   Widget build(BuildContext context) {
-    final rating = (review['rating'] as int?) ?? 0;
-    final reviewerName = (review['reviewerName'] as String?) ?? '';
-    final comment = (review['comment'] as String?) ?? '';
-
+    final dateLabel = DateFormat('yyyy-MM-dd').format(review.createdAt);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -329,7 +375,7 @@ class _ReviewItem extends StatelessWidget {
                 children: List.generate(
                   5,
                   (i) => Icon(
-                    i < rating ? Icons.star : Icons.star_border,
+                    i < review.rating ? Icons.star : Icons.star_border,
                     color: AppTheme.accent,
                     size: 16,
                   ),
@@ -338,7 +384,7 @@ class _ReviewItem extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  reviewerName,
+                  review.reviewerDisplayName,
                   style: GoogleFonts.nunito(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -347,17 +393,23 @@ class _ReviewItem extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              Text(
+                dateLabel,
+                style: GoogleFonts.nunito(fontSize: 11, color: Colors.grey[500]),
+              ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            comment,
-            style: GoogleFonts.nunito(
-              fontSize: 13,
-              color: Colors.grey[600],
-              height: 1.4,
+          if ((review.comment ?? '').isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              review.comment!,
+              style: GoogleFonts.nunito(
+                fontSize: 13,
+                color: Colors.grey[600],
+                height: 1.4,
+              ),
             ),
-          ),
+          ],
           if (!isLast) const Divider(height: 16),
         ],
       ),
