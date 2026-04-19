@@ -5,8 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:dailywork/core/network/api_client.dart';
 import 'package:dailywork/core/theme/app_theme.dart';
-import 'package:dailywork/models/user_model.dart';
 import 'package:dailywork/providers/auth_provider.dart';
+import 'package:dailywork/screens/auth/name_entry_screen.dart';
 
 class RoleSelectScreen extends ConsumerStatefulWidget {
   const RoleSelectScreen({super.key});
@@ -20,6 +20,13 @@ class _RoleSelectScreenState extends ConsumerState<RoleSelectScreen> {
   String? _error;
 
   Future<void> _select(String userType) async {
+    if (userType == 'worker') {
+      // New workers must set a display name before proceeding.
+      context.push('/name-entry',
+          extra: const NameEntryArgs(mode: NameEntryMode.onboardingWorker));
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
@@ -27,12 +34,7 @@ class _RoleSelectScreenState extends ConsumerState<RoleSelectScreen> {
     try {
       await ref.read(authProvider.notifier).setupProfile(userType);
       if (!mounted) return;
-      final auth = ref.read(authProvider);
-      context.go(
-        auth.user?.role == UserRole.employer
-            ? '/employer/home'
-            : '/worker/home',
-      );
+      context.go('/employer/home');
     } catch (e) {
       final apiError = ApiException.extract(e);
       if (mounted) {
