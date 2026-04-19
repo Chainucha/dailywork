@@ -10,6 +10,7 @@ class WorkerProfileResponse(BaseModel):
     daily_wage_expectation: float | None = None
     rating_avg: float
     total_reviews: int
+    jobs_completed: int = 0
     updated_at: datetime
 
 

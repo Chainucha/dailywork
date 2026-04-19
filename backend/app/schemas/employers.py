@@ -9,6 +9,7 @@ class EmployerProfileResponse(BaseModel):
     business_type: str | None = None
     rating_avg: float
     total_reviews: int
+    jobs_posted: int = 0
     updated_at: datetime
 
 
