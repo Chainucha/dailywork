@@ -54,18 +54,27 @@ def verify_otp(phone: str, token: str) -> dict:
     }
 
 
-def setup_profile(user_id: str, phone: str, user_type: str) -> None:
+def setup_profile(
+    user_id: str,
+    phone: str,
+    user_type: str,
+    display_name: str | None = None,
+) -> None:
     db = get_supabase()
 
     # Guard against duplicate calls (e.g. user taps twice)
     if db.table("users").select("id").eq("id", user_id).execute().data:
         return
 
-    user_row = db.table("users").insert({
+    user_payload = {
         "id": user_id,
         "phone_number": phone,
         "user_type": user_type,
-    }).execute()
+    }
+    if display_name is not None:
+        user_payload["display_name"] = display_name
+
+    user_row = db.table("users").insert(user_payload).execute()
     user = user_row.data[0]
 
     if user_type == "worker":

@@ -29,7 +29,12 @@ async def setup_profile(
     body: SetupProfileRequest,
     jwt: dict = Depends(get_jwt_payload),
 ):
-    auth_service.setup_profile(jwt["sub"], jwt["phone"], body.user_type)
+    auth_service.setup_profile(
+        jwt["sub"],
+        jwt["phone"],
+        body.user_type,
+        display_name=body.display_name,
+    )
     return {"message": "Profile created"}
 
 

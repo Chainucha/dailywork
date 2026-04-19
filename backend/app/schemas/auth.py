@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Literal
 
 
@@ -13,6 +13,19 @@ class VerifyOtpRequest(BaseModel):
 
 class SetupProfileRequest(BaseModel):
     user_type: Literal["worker", "employer"]
+    display_name: str | None = None
+
+    @field_validator("display_name")
+    @classmethod
+    def _validate_display_name(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        trimmed = v.strip()
+        if not trimmed:
+            raise ValueError("display_name cannot be empty or whitespace")
+        if len(trimmed) > 60:
+            raise ValueError("display_name cannot exceed 60 characters")
+        return trimmed
 
 
 class RefreshRequest(BaseModel):
