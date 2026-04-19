@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:dailywork/core/network/api_client.dart';
 import 'package:dailywork/core/theme/app_theme.dart';
+import 'package:dailywork/models/user_model.dart';
 import 'package:dailywork/providers/auth_provider.dart';
 import 'package:dailywork/repositories/api/api_user_repository.dart';
 
@@ -63,7 +64,10 @@ class _NameEntryScreenState extends ConsumerState<NameEntryScreen> {
         await ref.read(apiUserRepositoryProvider).updateDisplayName(trimmed);
         await ref.read(authProvider.notifier).refreshMe();
         if (!mounted) return;
-        context.pop();
+        final user = ref.read(authProvider).user;
+        context.go(user?.role == UserRole.worker
+            ? '/worker/profile'
+            : '/employer/profile');
       }
     } catch (e) {
       final apiError = ApiException.extract(e);

@@ -6,6 +6,7 @@ def test_jwks_url_derived_from_supabase_url():
     s = Settings(
         _env_file=None,
         SUPABASE_URL="https://abc.supabase.co",
+        SUPABASE_ANON_KEY="test-anon-key",
         SUPABASE_SERVICE_ROLE_KEY="srk",
     )
     assert s.SUPABASE_JWKS_URL == "https://abc.supabase.co/auth/v1/.well-known/jwks.json"
@@ -16,6 +17,7 @@ def test_jwt_secret_is_optional():
     s = Settings(
         _env_file=None,
         SUPABASE_URL="https://abc.supabase.co",
+        SUPABASE_ANON_KEY="test-anon-key",
         SUPABASE_SERVICE_ROLE_KEY="srk",
     )
     assert s.SUPABASE_JWT_SECRET == ""

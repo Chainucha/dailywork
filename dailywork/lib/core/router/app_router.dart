@@ -116,7 +116,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/name-entry',
         builder: (context, state) {
-          final args = state.extra as NameEntryArgs;
+          final args = (state.extra as NameEntryArgs?) ??
+              const NameEntryArgs(mode: NameEntryMode.edit);
           return NameEntryScreen(args: args);
         },
       ),
