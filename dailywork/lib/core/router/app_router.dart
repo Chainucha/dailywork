@@ -8,6 +8,7 @@ import 'package:dailywork/screens/auth/splash_screen.dart';
 import 'package:dailywork/screens/auth/phone_login_screen.dart';
 import 'package:dailywork/screens/auth/otp_verify_screen.dart';
 import 'package:dailywork/screens/auth/role_select_screen.dart';
+import 'package:dailywork/screens/auth/name_entry_screen.dart';
 import 'package:dailywork/screens/browse/browse_shell.dart';
 import 'package:dailywork/screens/worker/worker_home_screen.dart';
 import 'package:dailywork/screens/worker/worker_shell.dart';
@@ -111,6 +112,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/select-role',
         builder: (context, state) => const RoleSelectScreen(),
+      ),
+      GoRoute(
+        path: '/name-entry',
+        builder: (context, state) {
+          final args = state.extra as NameEntryArgs;
+          return NameEntryScreen(args: args);
+        },
       ),
 
       // Guest browse — reuses existing worker screens inside BrowseShell.
