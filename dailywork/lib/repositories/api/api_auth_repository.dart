@@ -28,8 +28,14 @@ class ApiAuthRepository {
     return data['is_new_user'] as bool? ?? false;
   }
 
-  Future<void> setupProfile(String userType) async {
-    await _dio.post('/auth/setup-profile', data: {'user_type': userType});
+  Future<void> setupProfile(String userType, {String? displayName}) async {
+    await _dio.post<Map<String, dynamic>>(
+      '/auth/setup-profile',
+      data: {
+        'user_type': userType,
+        if (displayName != null) 'display_name': displayName,
+      },
+    );
   }
 
   Future<void> logout() async {

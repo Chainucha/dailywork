@@ -99,14 +99,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   /// Called from the role-select screen after a new user picks their role.
-  Future<void> setupProfile(String userType) async {
-    await _authRepo.setupProfile(userType);
+  Future<void> setupProfile(String userType, {String? displayName}) async {
+    await _authRepo.setupProfile(userType, displayName: displayName);
     final user = await _userRepo.getMe();
     state = AuthState(
       user: user,
       status: AuthStatus.authenticated,
       pendingRedirect: state.pendingRedirect,
     );
+  }
+
+  /// Re-fetches the current user and updates state without disturbing status
+  /// or pendingRedirect. Used after profile edits (e.g. display_name change).
+  Future<void> refreshMe() async {
+    final user = await _userRepo.getMe();
+    state = state.copyWith(user: user);
   }
 
   Future<void> logout() async {

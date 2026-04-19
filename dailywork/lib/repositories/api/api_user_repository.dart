@@ -42,6 +42,14 @@ class ApiUserRepository {
     await _dio.patch('/users/me', data: {'fcm_token': token});
     return getMe();
   }
+
+  Future<UserModel> updateDisplayName(String name) async {
+    await _dio.patch<Map<String, dynamic>>(
+      '/users/me',
+      data: {'display_name': name},
+    );
+    return getMe();
+  }
 }
 
 final apiUserRepositoryProvider = Provider<ApiUserRepository>((ref) {
