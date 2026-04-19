@@ -24,3 +24,18 @@ class ReviewResponse(BaseModel):
     rating: int
     comment: str | None = None
     created_at: datetime
+
+
+class ReviewListItem(BaseModel):
+    id: UUID4
+    rating: int
+    comment: str | None = None
+    created_at: datetime
+    reviewer_display_name: str
+
+
+class ReviewListResponse(BaseModel):
+    items: list[ReviewListItem]
+    total: int
+    limit: int
+    offset: int
