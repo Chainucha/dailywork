@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:go_router/go_router.dart';
 import 'package:dailywork/core/theme/app_theme.dart';
+import 'package:dailywork/core/utils/tap_to_call.dart';
 import 'package:dailywork/providers/language_provider.dart';
 import 'package:dailywork/providers/job_provider.dart';
 import 'package:dailywork/screens/shared/widgets/status_badge.dart';
@@ -235,37 +237,30 @@ class EmployerJobDetailScreen extends ConsumerWidget {
                 ),
               ),
 
-              // Manage button
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.accent,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.phone),
+                        label: const Text('Call'),
+                        onPressed: () => dialPhone('+10000000000'),
                       ),
                     ),
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            strings['coming_soon'] ?? 'Coming soon',
-                          ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.accent,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                      );
-                    },
-                    child: Text(
-                      'Manage',
-                      style: GoogleFonts.nunito(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+                        onPressed: () => context.push('/employer/jobs/${job.id}/edit'),
+                        child: Text('Edit', style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700)),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ],
