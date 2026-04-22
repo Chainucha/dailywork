@@ -60,7 +60,7 @@ class WizardScaffold extends ConsumerWidget {
                         color: isActive
                             ? AppTheme.accent
                             : isDone
-                                ? AppTheme.accent.withOpacity(0.5)
+                                ? AppTheme.accent.withValues(alpha: 0.5)
                                 : Colors.grey[300],
                         borderRadius: BorderRadius.circular(3),
                       ),
