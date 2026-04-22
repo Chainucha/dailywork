@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from app.dependencies import get_current_user, require_employer, optional_current_user
-from app.schemas.jobs import JobCreate, JobUpdate, JobResponse, JobListResponse
+from app.schemas.jobs import JobCreate, JobUpdate, JobResponse, JobListResponse, JobCancelRequest
 from app.services import job_service
 from app.services.job_service import _enrich_rows_batch
 from app.supabase_client import get_supabase
@@ -137,3 +137,26 @@ async def delete_job(
 
     db.table("jobs").delete().eq("id", job_id).execute()
     await job_service.invalidate_job_cache()
+
+
+@router.post("/{job_id}/cancel", response_model=JobResponse)
+@limiter.limit("10/minute")
+async def cancel_job(
+    request: Request,
+    job_id: str,
+    body: JobCancelRequest,
+    employer: dict = Depends(require_employer),
+):
+    db = get_supabase()
+    try:
+        refreshed = await job_service.cancel_job(db, job_id, employer["id"], body.reason)
+    except ValueError as e:
+        if str(e) == "not_found":
+            raise HTTPException(status_code=404, detail="Job not found")
+        if str(e) == "forbidden":
+            raise HTTPException(status_code=403, detail="Not your job")
+        if str(e) == "invalid_status":
+            raise HTTPException(status_code=400, detail="Only open or assigned jobs can be cancelled")
+        raise
+    enriched = _enrich_rows_batch(db, [refreshed])
+    return enriched[0]
