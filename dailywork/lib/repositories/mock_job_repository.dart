@@ -345,4 +345,24 @@ class MockJobRepository implements JobRepository {
     await Future.delayed(const Duration(milliseconds: 100));
     return _categories;
   }
+
+  @override
+  Future<JobModel> createJob(Map<String, dynamic> body) async {
+    throw UnimplementedError('createJob not supported in mock');
+  }
+
+  @override
+  Future<JobModel> updateJob(String id, Map<String, dynamic> body) async {
+    throw UnimplementedError('updateJob not supported in mock');
+  }
+
+  @override
+  Future<JobModel> cancelJob(String id, {String? reason}) async {
+    throw UnimplementedError('cancelJob not supported in mock');
+  }
+
+  @override
+  Future<EmployerJobsGrouped> getMyPostedJobs() async {
+    throw UnimplementedError('getMyPostedJobs not supported in mock');
+  }
 }
