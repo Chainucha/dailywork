@@ -63,3 +63,11 @@ class JobListResponse(BaseModel):
     page: int
     page_size: int
     total: int
+
+
+class EmployerJobsGroupedResponse(BaseModel):
+    open: list[JobResponse] = []
+    assigned: list[JobResponse] = []
+    in_progress: list[JobResponse] = []
+    completed: list[JobResponse] = []
+    cancelled: list[JobResponse] = []

@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from app.dependencies import get_current_user, require_employer
 from app.schemas.employers import EmployerProfileResponse, EmployerProfileUpdate
+from app.schemas.jobs import EmployerJobsGroupedResponse
+from app.services.job_service import _enrich_rows_batch
 from app.supabase_client import get_supabase
 
 router = APIRouter(tags=["employers"])
@@ -47,6 +49,29 @@ async def update_my_profile(
         profile = result.data[0]
     profile["jobs_posted"] = _count_jobs_posted(db, current_user["id"])
     return profile
+
+
+@router.get("/me/jobs", response_model=EmployerJobsGroupedResponse)
+async def get_my_posted_jobs(current_user: dict = Depends(require_employer)):
+    db = get_supabase()
+    rows = (
+        db.table("jobs")
+        .select("*, categories(name)")
+        .eq("employer_id", current_user["id"])
+        .order("created_at", desc=True)
+        .execute()
+        .data
+        or []
+    )
+    enriched = _enrich_rows_batch(db, rows)
+    grouped = {
+        "open": [], "assigned": [], "in_progress": [], "completed": [], "cancelled": [],
+    }
+    for r in enriched:
+        bucket = grouped.get(r["status"])
+        if bucket is not None:
+            bucket.append(r)
+    return grouped
 
 
 @router.get("/{user_id}/profile", response_model=EmployerProfileResponse)
