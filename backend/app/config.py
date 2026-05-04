@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     # Firebase Cloud Messaging
     FCM_SERVER_KEY: str = ""
 
+    # Dev-only bypass — ignored when APP_ENV=production
+    DEV_WORKER_PHONE: str = ""    # e.g. +10000000001
+    DEV_EMPLOYER_PHONE: str = ""  # e.g. +10000000002
+    DEV_BYPASS_OTP: str = "000000"
+
     @model_validator(mode="after")
     def _default_jwks_url(self) -> "Settings":
         if not self.SUPABASE_JWKS_URL:
