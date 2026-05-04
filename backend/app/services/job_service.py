@@ -173,3 +173,33 @@ async def invalidate_job_cache() -> None:
             await redis.delete(*keys)
     except Exception:
         pass  # Redis unavailable — cache invalidation is best-effort
+
+
+async def cancel_job(db: Client, job_id: str, employer_id: str, reason: str | None) -> dict:
+    """Cancels a job and cascades to all pending/accepted applications.
+
+    Raises ValueError on guard failures (router converts to 400/403/404).
+    """
+    job_result = db.table("jobs").select("*").eq("id", job_id).execute()
+    if not job_result.data:
+        raise ValueError("not_found")
+    job = job_result.data[0]
+    if job["employer_id"] != employer_id:
+        raise ValueError("forbidden")
+    if job["status"] not in ("open", "assigned"):
+        raise ValueError("invalid_status")
+
+    update = {"status": "cancelled"}
+    if reason is not None:
+        update["cancellation_reason"] = reason
+    db.table("jobs").update(update).eq("id", job_id).execute()
+
+    # Cascade — set every pending/accepted application on this job to withdrawn.
+    db.table("applications").update({"status": "withdrawn"}) \
+        .eq("job_id", job_id) \
+        .in_("status", ["pending", "accepted"]) \
+        .execute()
+
+    await invalidate_job_cache()
+    refreshed = db.table("jobs").select("*").eq("id", job_id).execute().data[0]
+    return refreshed

@@ -12,10 +12,15 @@ class EmployerShell extends ConsumerWidget {
   final Widget child;
 
   int _currentIndex(BuildContext context) {
-    final location = GoRouterState.of(context).uri.toString();
-    if (location.contains('/employer/profile')) return 2;
-    // Job detail is reached from home list — highlight Home tab
+    final loc = GoRouterState.of(context).uri.toString();
+    if (loc.contains('/employer/my-jobs')) return 1;
+    if (loc.contains('/employer/profile')) return 2;
     return 0;
+  }
+
+  bool _showFab(BuildContext context) {
+    final loc = GoRouterState.of(context).uri.toString();
+    return loc.endsWith('/employer/home') || loc.endsWith('/employer/my-jobs');
   }
 
   @override
@@ -25,32 +30,28 @@ class EmployerShell extends ConsumerWidget {
 
     return Scaffold(
       body: child,
+      floatingActionButton: _showFab(context)
+          ? FloatingActionButton(
+              backgroundColor: AppTheme.accent,
+              onPressed: () => context.push('/employer/jobs/new'),
+              tooltip: strings['post_job'] ?? 'Post Job',
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: currentIndex,
         backgroundColor: Colors.white,
         selectedItemColor: AppTheme.accent,
         unselectedItemColor: Colors.grey,
         elevation: 8,
-        selectedLabelStyle: GoogleFonts.nunito(
-          fontWeight: FontWeight.w700,
-          fontSize: 12,
-        ),
-        unselectedLabelStyle: GoogleFonts.nunito(
-          fontWeight: FontWeight.w500,
-          fontSize: 12,
-        ),
+        selectedLabelStyle: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 12),
+        unselectedLabelStyle: GoogleFonts.nunito(fontWeight: FontWeight.w500, fontSize: 12),
         type: BottomNavigationBarType.fixed,
         onTap: (index) {
           switch (index) {
-            case 0:
-              context.go('/employer/home');
-            case 1:
-              // Post Job feature coming in a future release
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(strings['coming_soon'] ?? 'Coming soon')),
-              );
-            case 2:
-              context.go('/employer/profile');
+            case 0: context.go('/employer/home');
+            case 1: context.go('/employer/my-jobs');
+            case 2: context.go('/employer/profile');
           }
         },
         items: [
@@ -60,9 +61,9 @@ class EmployerShell extends ConsumerWidget {
             label: strings['home'] ?? 'Home',
           ),
           BottomNavigationBarItem(
-            icon: const Icon(Icons.add_circle_outline),
-            activeIcon: const Icon(Icons.add_circle),
-            label: strings['post_job'] ?? 'Post Job',
+            icon: const Icon(Icons.work_outline),
+            activeIcon: const Icon(Icons.work),
+            label: strings['tab_my_jobs'] ?? 'My Jobs',
           ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.person_outline),

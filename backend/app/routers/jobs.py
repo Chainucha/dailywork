@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from app.dependencies import get_current_user, require_employer, optional_current_user
-from app.schemas.jobs import JobCreate, JobUpdate, JobResponse, JobListResponse
+from app.schemas.jobs import JobCreate, JobUpdate, JobResponse, JobListResponse, JobCancelRequest
 from app.services import job_service
 from app.services.job_service import _enrich_rows_batch
 from app.supabase_client import get_supabase
@@ -44,12 +44,11 @@ async def create_job(
     employer: dict = Depends(require_employer),
 ):
     db = get_supabase()
-    payload = body.model_dump()
+    # mode="json" serialises date/time/UUID to str so supabase-py can encode them
+    payload = body.model_dump(mode="json")
     payload["employer_id"] = employer["id"]
     payload["status"] = "open"
     payload["workers_assigned"] = 0
-    # Convert UUID fields to str for supabase-py
-    payload["category_id"] = str(payload["category_id"])
 
     result = db.table("jobs").insert(payload).execute()
     await job_service.invalidate_job_cache()
@@ -88,7 +87,8 @@ async def update_job(
     if job["employer_id"] != employer["id"]:
         raise HTTPException(status_code=403, detail="Not your job")
 
-    updates = body.model_dump(exclude_none=True)
+    # mode="json" serialises date/time to str so supabase-py can encode them
+    updates = body.model_dump(mode="json", exclude_none=True)
     if not updates:
         return job
 
@@ -137,3 +137,26 @@ async def delete_job(
 
     db.table("jobs").delete().eq("id", job_id).execute()
     await job_service.invalidate_job_cache()
+
+
+@router.post("/{job_id}/cancel", response_model=JobResponse)
+@limiter.limit("10/minute")
+async def cancel_job(
+    request: Request,
+    job_id: str,
+    body: JobCancelRequest,
+    employer: dict = Depends(require_employer),
+):
+    db = get_supabase()
+    try:
+        refreshed = await job_service.cancel_job(db, job_id, employer["id"], body.reason)
+    except ValueError as e:
+        if str(e) == "not_found":
+            raise HTTPException(status_code=404, detail="Job not found")
+        if str(e) == "forbidden":
+            raise HTTPException(status_code=403, detail="Not your job")
+        if str(e) == "invalid_status":
+            raise HTTPException(status_code=400, detail="Only open or assigned jobs can be cancelled")
+        raise
+    enriched = _enrich_rows_batch(db, [refreshed])
+    return enriched[0]
