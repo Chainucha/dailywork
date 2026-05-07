@@ -145,8 +145,66 @@ class WorkerProfileScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
+                const SizedBox(height: 12),
+                _LogoutTile(strings: strings),
               ],
             ),
+    );
+  }
+}
+
+class _LogoutTile extends ConsumerWidget {
+  const _LogoutTile({required this.strings});
+  final Map<String, String> strings;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        leading: const Icon(Icons.logout, color: Colors.redAccent),
+        title: Text(
+          strings['logout'] ?? 'Log out',
+          style: GoogleFonts.nunito(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: Colors.redAccent,
+          ),
+        ),
+        onTap: () async {
+          final confirm = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text(strings['logout'] ?? 'Log out'),
+              content: Text(
+                strings['logout_confirm'] ??
+                    'Are you sure you want to log out?',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: Text(strings['cancel'] ?? 'Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  child: Text(
+                    strings['logout'] ?? 'Log out',
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                ),
+              ],
+            ),
+          );
+          if (confirm != true) return;
+          await ref.read(authProvider.notifier).logout();
+        },
+      ),
     );
   }
 }
