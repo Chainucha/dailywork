@@ -4,8 +4,6 @@ pydantic-settings==2.6.1
 pydantic==2.10.3
 supabase==2.10.0
 PyJWT[crypto]==2.12.1
-redis[asyncio]==5.2.1
-celery==5.4.0
 slowapi==0.1.9
 httpx
 pytest==8.3.4

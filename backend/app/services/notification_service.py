@@ -1,4 +1,4 @@
-from app.tasks.notification_tasks import send_push_notification
+from app.supabase_client import get_supabase
 
 
 def dispatch_notification(
@@ -7,4 +7,13 @@ def dispatch_notification(
     data: dict,
     fcm_token: str | None = None,
 ) -> None:
-    send_push_notification.delay(user_id, notif_type, data, fcm_token)
+    db = get_supabase()
+    try:
+        db.table("notifications").insert({
+            "user_id": user_id,
+            "type": notif_type,
+            "is_read": False,
+            "data": data,
+        }).execute()
+    except Exception:
+        pass

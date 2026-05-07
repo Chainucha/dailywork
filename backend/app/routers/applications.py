@@ -113,17 +113,14 @@ async def update_application_status(
         .execute()
     )
 
-    # Fire notification async (best-effort)
+    # Write notification record (best-effort)
     try:
         from app.services.notification_service import dispatch_notification
         if new_status in ("accepted", "rejected"):
-            worker_row = db.table("users").select("fcm_token").eq("id", application["worker_id"]).execute()
-            fcm = worker_row.data[0]["fcm_token"] if worker_row.data else None
             dispatch_notification(
                 user_id=application["worker_id"],
                 notif_type=f"application_{new_status}",
                 data={"job_id": str(application["job_id"]), "application_id": str(application["id"])},
-                fcm_token=fcm,
             )
     except Exception:
         pass

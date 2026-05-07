@@ -1,17 +1,5 @@
-import hashlib
-import json
 from collections import Counter
 from supabase import Client
-from app.redis_client import get_redis
-
-CACHE_TTL = 60  # seconds
-CACHE_PREFIX = "jobs:feed:"
-
-
-def _cache_key(params: dict) -> str:
-    serialized = json.dumps(params, sort_keys=True, default=str)
-    digest = hashlib.sha256(serialized.encode()).hexdigest()[:16]
-    return f"{CACHE_PREFIX}{digest}"
 
 
 def _enrich_rows_batch(db: Client, rows: list[dict]) -> list[dict]:
@@ -90,25 +78,6 @@ async def get_jobs_feed(
     if lat is None or lng is None:
         return _plain_feed(db, category_id, filter_status, page, page_size)
 
-    cache_params = {
-        "lat": round(lat, 4),
-        "lng": round(lng, 4),
-        "radius_km": radius_km,
-        "category_id": category_id,
-        "status": filter_status,
-        "page": page,
-        "page_size": page_size,
-    }
-    key = _cache_key(cache_params)
-    redis = get_redis()
-
-    try:
-        cached = await redis.get(key)
-        if cached:
-            return json.loads(cached)
-    except Exception:
-        cached = None  # Redis unavailable — fall through to DB
-
     offset = (page - 1) * page_size
     result = db.rpc("get_nearby_jobs", {
         "user_lat": lat,
@@ -123,18 +92,12 @@ async def get_jobs_feed(
     rows = result.data or []
     total = rows[0]["total_count"] if rows else 0
 
-    payload = {
+    return {
         "data": rows,
         "page": page,
         "page_size": page_size,
         "total": total,
     }
-
-    try:
-        await redis.setex(key, CACHE_TTL, json.dumps(payload, default=str))
-    except Exception:
-        pass  # Redis unavailable — skip caching, return result anyway
-    return payload
 
 
 def _plain_feed(
@@ -165,16 +128,6 @@ def _plain_feed(
     }
 
 
-async def invalidate_job_cache() -> None:
-    redis = get_redis()
-    try:
-        keys = await redis.keys(f"{CACHE_PREFIX}*")
-        if keys:
-            await redis.delete(*keys)
-    except Exception:
-        pass  # Redis unavailable — cache invalidation is best-effort
-
-
 async def cancel_job(db: Client, job_id: str, employer_id: str, reason: str | None) -> dict:
     """Cancels a job and cascades to all pending/accepted applications.
 
@@ -200,6 +153,5 @@ async def cancel_job(db: Client, job_id: str, employer_id: str, reason: str | No
         .in_("status", ["pending", "accepted"]) \
         .execute()
 
-    await invalidate_job_cache()
     refreshed = db.table("jobs").select("*").eq("id", job_id).execute().data[0]
     return refreshed

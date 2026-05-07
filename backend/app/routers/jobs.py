@@ -51,7 +51,6 @@ async def create_job(
     payload["workers_assigned"] = 0
 
     result = db.table("jobs").insert(payload).execute()
-    await job_service.invalidate_job_cache()
     return result.data[0]
 
 
@@ -103,7 +102,6 @@ async def update_job(
             )
 
     result = db.table("jobs").update(updates).eq("id", job_id).execute()
-    await job_service.invalidate_job_cache()
     return result.data[0]
 
 
@@ -136,7 +134,6 @@ async def delete_job(
         raise HTTPException(status_code=400, detail="Cannot delete job with accepted applicants")
 
     db.table("jobs").delete().eq("id", job_id).execute()
-    await job_service.invalidate_job_cache()
 
 
 @router.post("/{job_id}/cancel", response_model=JobResponse)
