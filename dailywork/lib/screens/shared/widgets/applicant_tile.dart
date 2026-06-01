@@ -39,7 +39,7 @@ class ApplicantTile extends ConsumerWidget {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: AppTheme.primary.withOpacity(0.1),
+                  backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
                   child: Text(
                     applicant.displayName.isNotEmpty
                         ? applicant.displayName.characters.first.toUpperCase()
