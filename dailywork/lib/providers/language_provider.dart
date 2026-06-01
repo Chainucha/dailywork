@@ -76,6 +76,20 @@ const Map<String, String> _enStrings = {
   'no_posted_jobs': 'No jobs yet — tap + to post one',
   'today_digest': "Today's overview",
   'tab_my_jobs': 'My Jobs',
+  'manage_applicants': 'Applicants',
+  'no_applicants': 'No applicants yet',
+  'accept': 'Accept',
+  'reject': 'Reject',
+  'call_worker': 'Call',
+  'accepted_label': 'Accepted',
+  'rejected_label': 'Rejected',
+  'pending_label': 'Pending',
+  'withdrawn_label': 'Withdrawn',
+  'applicant_accepted_toast': 'Worker accepted',
+  'applicant_rejected_toast': 'Application rejected',
+  'capacity_reached_toast': 'Job has reached worker capacity',
+  'action_failed_toast': 'Action failed — try again',
+  'no_rating': 'New',
 };
 
 // Kannada strings
@@ -151,6 +165,20 @@ const Map<String, String> _knStrings = {
   'no_posted_jobs': 'ಇನ್ನೂ ಕೆಲಸಗಳಿಲ್ಲ — ಪೋಸ್ಟ್ ಮಾಡಲು + ಒತ್ತಿರಿ',
   'today_digest': 'ಇಂದಿನ ಸಮಾಲೋಚನೆ',
   'tab_my_jobs': 'ನನ್ನ ಕೆಲಸಗಳು',
+  'manage_applicants': 'ಅರ್ಜಿದಾರರು',
+  'no_applicants': 'ಇನ್ನೂ ಅರ್ಜಿದಾರರಿಲ್ಲ',
+  'accept': 'ಸ್ವೀಕರಿಸಿ',
+  'reject': 'ತಿರಸ್ಕರಿಸಿ',
+  'call_worker': 'ಕರೆ ಮಾಡಿ',
+  'accepted_label': 'ಸ್ವೀಕರಿಸಲಾಗಿದೆ',
+  'rejected_label': 'ತಿರಸ್ಕರಿಸಲಾಗಿದೆ',
+  'pending_label': 'ಬಾಕಿ ಇದೆ',
+  'withdrawn_label': 'ಹಿಂಪಡೆಯಲಾಗಿದೆ',
+  'applicant_accepted_toast': 'ಕಾರ್ಮಿಕ ಸ್ವೀಕರಿಸಲಾಗಿದೆ',
+  'applicant_rejected_toast': 'ಅರ್ಜಿ ತಿರಸ್ಕರಿಸಲಾಗಿದೆ',
+  'capacity_reached_toast': 'ಕೆಲಸ ಕಾರ್ಮಿಕರ ಮಿತಿ ತಲುಪಿದೆ',
+  'action_failed_toast': 'ಕ್ರಿಯೆ ವಿಫಲವಾಗಿದೆ — ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
+  'no_rating': 'ಹೊಸ',
 };
 
 // Provider that returns current strings map
