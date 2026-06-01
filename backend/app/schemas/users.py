@@ -1,10 +1,11 @@
-from pydantic import BaseModel, UUID4, field_validator
+from pydantic import BaseModel, field_validator
+from uuid import UUID
 from datetime import datetime
 from typing import Literal
 
 
 class UserResponse(BaseModel):
-    id: UUID4
+    id: UUID
     phone_number: str
     user_type: Literal["worker", "employer"]
     display_name: str | None = None

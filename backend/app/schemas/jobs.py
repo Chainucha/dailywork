@@ -1,11 +1,11 @@
-from pydantic import BaseModel, UUID4, field_validator
+from pydantic import BaseModel, field_validator
 from uuid import UUID
 from datetime import date, datetime, time
 from typing import Literal
 
 
 class JobCreate(BaseModel):
-    category_id: UUID4
+    category_id: UUID
     title: str
     description: str | None = None
     location_lat: float

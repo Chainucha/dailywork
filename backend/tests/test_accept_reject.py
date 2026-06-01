@@ -71,6 +71,34 @@ def test_accept_bumps_assigned_and_flips_job(env):
         app.dependency_overrides.clear()
 
 
+def test_accept_succeeds_for_non_v4_job_id(env):
+    """Regression: seeded jobs/apps use non-v4 UUIDs (e.g. 'cccccccc-0001-...').
+    ApplicationResponse must accept them. UUID4 typing rejected them, raising
+    ResponseValidationError -> 500 AFTER the accept had already committed
+    (false-failure on the client, stale assigned count)."""
+    db, employer_id, worker_id = env["db"], env["employer_id"], env["worker_id"]
+    # uuid1 -> a valid UUID that is NOT version 4, like the seed data ids.
+    job_id = str(uuid.uuid1())
+    db.table("jobs").insert({
+        "id": job_id, "employer_id": employer_id, "category_id": _cat(db),
+        "title": f"acc-{job_id}", "location_lat": 0, "location_lng": 0,
+        "wage_per_day": 100, "workers_needed": 2, "workers_assigned": 0,
+        "start_date": "2026-01-01", "end_date": "2026-01-02", "status": "open",
+    }).execute()
+    app_id = str(uuid.uuid1())
+    db.table("applications").insert(
+        {"id": app_id, "job_id": job_id, "worker_id": worker_id, "status": "pending"}
+    ).execute()
+
+    app.dependency_overrides[get_current_user] = lambda: {"id": employer_id, "user_type": "employer"}
+    try:
+        res = client.patch(f"/api/v1/applications/{app_id}", json={"status": "accepted"})
+        assert res.status_code == 200, res.text
+        assert res.json()["status"] == "accepted"
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_accept_blocked_at_capacity(env):
     # The DB trigger trg_sync_workers_assigned recounts accepted apps on every
     # INSERT/UPDATE to applications, so a manual workers_assigned write gets

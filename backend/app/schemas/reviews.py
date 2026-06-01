@@ -1,10 +1,11 @@
-from pydantic import BaseModel, UUID4, field_validator
+from pydantic import BaseModel, field_validator
+from uuid import UUID
 from datetime import datetime
 
 
 class ReviewCreate(BaseModel):
-    reviewee_id: UUID4
-    job_id: UUID4
+    reviewee_id: UUID
+    job_id: UUID
     rating: int
     comment: str | None = None
 
@@ -17,17 +18,17 @@ class ReviewCreate(BaseModel):
 
 
 class ReviewResponse(BaseModel):
-    id: UUID4
-    reviewer_id: UUID4
-    reviewee_id: UUID4
-    job_id: UUID4
+    id: UUID
+    reviewer_id: UUID
+    reviewee_id: UUID
+    job_id: UUID
     rating: int
     comment: str | None = None
     created_at: datetime
 
 
 class ReviewListItem(BaseModel):
-    id: UUID4
+    id: UUID
     rating: int
     comment: str | None = None
     created_at: datetime

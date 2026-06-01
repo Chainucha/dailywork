@@ -203,56 +203,31 @@ class JobCard extends ConsumerWidget {
                     if (applicationStatus != null)
                       (trailing ?? const SizedBox.shrink())
                     else if (!isEmployerView)
-                      Row(
-                        children: [
-                          Expanded(
-                            child: SizedBox(
-                              height: 38,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  final message =
-                                      '${strings['apply_success'] ?? 'Application submitted successfully'}: ${job.title}';
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(message)),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.accent,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  padding: EdgeInsets.zero,
-                                  elevation: 0,
-                                ),
-                                child: Text(
-                                  strings['apply'] ?? 'Apply',
-                                  style: GoogleFonts.nunito(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 38,
+                        // Routes to the job-detail screen, which owns the
+                        // single real Apply path. Keeping apply in one place
+                        // avoids the duplicated/fake-apply drift (see Bug 1).
+                        child: ElevatedButton(
+                          onPressed: onTap,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.accent,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: EdgeInsets.zero,
+                            elevation: 0,
+                          ),
+                          child: Text(
+                            strings['view_job'] ?? 'View Job',
+                            style: GoogleFonts.nunito(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          SizedBox(
-                            width: 38,
-                            height: 38,
-                            child: OutlinedButton(
-                              onPressed: () {},
-                              style: OutlinedButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                side: BorderSide(color: Colors.grey[300]!),
-                              ),
-                              child: Icon(Icons.phone_outlined,
-                                  size: 18, color: Colors.grey[700]),
-                            ),
-                          ),
-                        ],
+                        ),
                       )
                     else
                       Text(
