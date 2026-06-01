@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as fmap;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -37,6 +39,39 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
   bool _busy = false;
   String? _error;
 
+  // GPS-resolved default for the map picker. Seeded on open so "Adjust on map"
+  // centers near the user instead of the hardcoded Bangalore fallback.
+  double? _gpsLat;
+  double? _gpsLng;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialLat == null || widget.initialLng == null) {
+      _autoCenter();
+    }
+  }
+
+  // Silently center on the device location if permission is already granted.
+  // Does not prompt — the explicit "Use my location" button handles requests.
+  Future<void> _autoCenter() async {
+    try {
+      final perm = await Geolocator.checkPermission();
+      if (perm != LocationPermission.whileInUse &&
+          perm != LocationPermission.always) {
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition();
+      if (!mounted) return;
+      setState(() { _gpsLat = pos.latitude; _gpsLng = pos.longitude; });
+    } catch (_) {
+      // Leave the fallback default; not a user-facing error.
+    }
+  }
+
+  double get _defaultLat => widget.initialLat ?? _gpsLat ?? 12.9716;
+  double get _defaultLng => widget.initialLng ?? _gpsLng ?? 77.5946;
+
   Future<void> _useGps() async {
     setState(() { _busy = true; _error = null; });
     try {
@@ -50,7 +85,31 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
         setState(() { _error = 'Location permission denied'; _busy = false; });
         return;
       }
-      final pos = await Geolocator.getCurrentPosition();
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        setState(() {
+          _error = 'Location services off — enable GPS (emulator: set a point in Extended Controls)';
+          _busy = false;
+        });
+        return;
+      }
+      // A live fix can be slow or unavailable (common on emulators with no set
+      // location). Cap the wait, then fall back to the last known fix.
+      Position? pos;
+      try {
+        pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(timeLimit: Duration(seconds: 10)),
+        );
+      } on TimeoutException {
+        pos = await Geolocator.getLastKnownPosition();
+      }
+      pos ??= await Geolocator.getLastKnownPosition();
+      if (pos == null) {
+        setState(() {
+          _error = 'No GPS fix yet — set a location in the emulator, or use Adjust on map';
+          _busy = false;
+        });
+        return;
+      }
       widget.onPicked(PickedLocation(lat: pos.latitude, lng: pos.longitude));
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
@@ -62,8 +121,8 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
     final picked = await Navigator.of(context).push<PickedLocation>(
       MaterialPageRoute(
         builder: (_) => _MapPickerScreen(
-          initialLat: widget.initialLat ?? 12.9716,
-          initialLng: widget.initialLng ?? 77.5946,
+          initialLat: _defaultLat,
+          initialLng: _defaultLng,
         ),
       ),
     );
@@ -71,28 +130,6 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
       widget.onPicked(picked);
       if (mounted) Navigator.of(context).pop();
     }
-  }
-
-  Future<void> _typeAddress() async {
-    final ctrl = TextEditingController(text: widget.initialAddress ?? '');
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Type address'),
-        content: TextField(controller: ctrl, autofocus: true),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, ctrl.text), child: const Text('Use')),
-        ],
-      ),
-    );
-    if (result == null || result.trim().isEmpty) return;
-    widget.onPicked(PickedLocation(
-      lat: widget.initialLat ?? 12.9716,
-      lng: widget.initialLng ?? 77.5946,
-      address: result.trim(),
-    ));
-    if (mounted) Navigator.of(context).pop();
   }
 
   @override
@@ -124,13 +161,6 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
             onPressed: _busy ? null : _adjustOnMap,
             icon: const Icon(Icons.map_outlined),
             label: Text(strings['adjust_on_map'] ?? 'Adjust on map'),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            key: const ValueKey('loc-type-address'),
-            onPressed: _busy ? null : _typeAddress,
-            icon: const Icon(Icons.edit_outlined),
-            label: Text(strings['type_address'] ?? 'Type address'),
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),

@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:dailywork/screens/shared/widgets/location_picker_sheet.dart';
 
 void main() {
-  testWidgets('renders the three primary actions', (tester) async {
+  testWidgets('renders the two primary actions', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         child: MaterialApp(
@@ -20,6 +20,6 @@ void main() {
     );
     expect(find.byKey(const ValueKey('loc-use-gps')), findsOneWidget);
     expect(find.byKey(const ValueKey('loc-adjust-map')), findsOneWidget);
-    expect(find.byKey(const ValueKey('loc-type-address')), findsOneWidget);
+    expect(find.byKey(const ValueKey('loc-type-address')), findsNothing);
   });
 }
