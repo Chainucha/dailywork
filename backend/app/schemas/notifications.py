@@ -1,10 +1,11 @@
-from pydantic import BaseModel, UUID4
+from pydantic import BaseModel
+from uuid import UUID
 from datetime import datetime
 
 
 class NotificationResponse(BaseModel):
-    id: UUID4
-    user_id: UUID4
+    id: UUID
+    user_id: UUID
     type: str
     is_read: bool
     data: dict
