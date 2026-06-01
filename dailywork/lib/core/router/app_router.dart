@@ -18,6 +18,7 @@ import 'package:dailywork/screens/employer/employer_shell.dart';
 import 'package:dailywork/screens/employer/employer_home_screen.dart';
 import 'package:dailywork/screens/employer/employer_job_detail_screen.dart';
 import 'package:dailywork/screens/employer/employer_my_jobs_screen.dart';
+import 'package:dailywork/screens/employer/employer_applicants_screen.dart';
 import 'package:dailywork/screens/employer/employer_post_job_screen.dart';
 import 'package:dailywork/screens/employer/employer_profile_screen.dart';
 
@@ -196,6 +197,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/employer/jobs/:id/edit',
         builder: (context, state) => EmployerPostJobScreen(
           jobId: state.pathParameters['id'],
+        ),
+      ),
+      GoRoute(
+        path: '/employer/jobs/:id/applicants',
+        builder: (context, state) => EmployerApplicantsScreen(
+          jobId: state.pathParameters['id']!,
         ),
       ),
     ],
