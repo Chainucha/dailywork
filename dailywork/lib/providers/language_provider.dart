@@ -94,6 +94,14 @@ const Map<String, String> _enStrings = {
   'capacity_reached_toast': 'Job has reached worker capacity',
   'action_failed_toast': 'Action failed — try again',
   'no_rating': 'New',
+  'my_applications': 'My Applications',
+  'tab_all': 'All',
+  'tab_pending': 'Pending',
+  'tab_accepted': 'Accepted',
+  'tab_done': 'Done',
+  'withdraw': 'Withdraw',
+  'no_applications': "You haven't applied to any jobs yet",
+  'application_withdrawn': 'Application withdrawn',
 };
 
 // Kannada strings
@@ -187,6 +195,14 @@ const Map<String, String> _knStrings = {
   'capacity_reached_toast': 'ಕೆಲಸ ಕಾರ್ಮಿಕರ ಮಿತಿ ತಲುಪಿದೆ',
   'action_failed_toast': 'ಕ್ರಿಯೆ ವಿಫಲವಾಗಿದೆ — ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ',
   'no_rating': 'ಹೊಸ',
+  'my_applications': 'ನನ್ನ ಅರ್ಜಿಗಳು',
+  'tab_all': 'ಎಲ್ಲಾ',
+  'tab_pending': 'ಬಾಕಿ',
+  'tab_accepted': 'ಸ್ವೀಕೃತ',
+  'tab_done': 'ಮುಗಿದಿದೆ',
+  'withdraw': 'ಹಿಂಪಡೆಯಿರಿ',
+  'no_applications': 'ನೀವು ಇನ್ನೂ ಯಾವುದೇ ಕೆಲಸಕ್ಕೆ ಅರ್ಜಿ ಸಲ್ಲಿಸಿಲ್ಲ',
+  'application_withdrawn': 'ಅರ್ಜಿ ಹಿಂಪಡೆಯಲಾಗಿದೆ',
 };
 
 // Provider that returns current strings map

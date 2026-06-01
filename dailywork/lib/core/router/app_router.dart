@@ -11,6 +11,7 @@ import 'package:dailywork/screens/auth/role_select_screen.dart';
 import 'package:dailywork/screens/auth/name_entry_screen.dart';
 import 'package:dailywork/screens/browse/browse_shell.dart';
 import 'package:dailywork/screens/worker/worker_home_screen.dart';
+import 'package:dailywork/screens/worker/worker_jobs_screen.dart';
 import 'package:dailywork/screens/worker/worker_shell.dart';
 import 'package:dailywork/screens/worker/worker_job_detail_screen.dart';
 import 'package:dailywork/screens/worker/worker_profile_screen.dart';
@@ -149,6 +150,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/worker/home',
             builder: (context, state) => const WorkerHomeScreen(),
+          ),
+          GoRoute(
+            path: '/worker/jobs',
+            builder: (context, state) => const WorkerJobsScreen(),
           ),
           GoRoute(
             path: '/worker/jobs/:id',

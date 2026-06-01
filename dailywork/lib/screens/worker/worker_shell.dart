@@ -14,7 +14,7 @@ class WorkerShell extends ConsumerWidget {
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
     if (location.contains('/worker/profile')) return 2;
-    if (location.contains('/worker/jobs/')) return 1;
+    if (location.contains('/worker/jobs')) return 1; // list and /jobs/:id detail
     return 0;
   }
 
@@ -45,7 +45,7 @@ class WorkerShell extends ConsumerWidget {
             case 0:
               context.go('/worker/home');
             case 1:
-              context.go('/worker/home');
+              context.go('/worker/jobs');
             case 2:
               context.go('/worker/profile');
           }

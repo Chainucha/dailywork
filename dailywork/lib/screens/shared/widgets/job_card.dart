@@ -5,6 +5,7 @@ import 'package:dailywork/core/theme/app_theme.dart';
 import 'package:dailywork/models/job_model.dart';
 import 'package:dailywork/providers/language_provider.dart';
 import 'package:dailywork/screens/shared/widgets/status_badge.dart';
+import 'package:dailywork/screens/shared/widgets/application_status_badge.dart';
 
 const List<Color> _categoryColors = [
   Color(0xFF1976D2), // blue
@@ -48,11 +49,19 @@ class JobCard extends ConsumerWidget {
   final VoidCallback onTap;
   final bool isEmployerView;
 
+  /// When set, the card renders in "my application" mode: shows an
+  /// [ApplicationStatusBadge] instead of the job status badge, and renders
+  /// [trailing] (e.g. a Withdraw button) in place of the apply/applicant row.
+  final String? applicationStatus;
+  final Widget? trailing;
+
   const JobCard({
     super.key,
     required this.job,
     required this.onTap,
     this.isEmployerView = false,
+    this.applicationStatus,
+    this.trailing,
   });
 
   @override
@@ -110,7 +119,9 @@ class JobCard extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        if (job.isUrgent)
+                        if (applicationStatus != null)
+                          ApplicationStatusBadge(status: applicationStatus!)
+                        else if (job.isUrgent)
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 3),
@@ -188,8 +199,10 @@ class JobCard extends ConsumerWidget {
                     ),
                     const SizedBox(height: 10),
 
-                    // Apply + phone buttons  OR  applicant count
-                    if (!isEmployerView)
+                    // Apply + phone buttons  OR  applicant count  OR  trailing
+                    if (applicationStatus != null)
+                      (trailing ?? const SizedBox.shrink())
+                    else if (!isEmployerView)
                       Row(
                         children: [
                           Expanded(

@@ -92,3 +92,15 @@ class EmployerJobsGroupedResponse(BaseModel):
     in_progress: list[JobResponse] = []
     completed: list[JobResponse] = []
     cancelled: list[JobResponse] = []
+
+
+class WorkerApplicationJob(JobResponse):
+    application_id: UUID
+    application_status: str
+
+
+class WorkerApplicationsGroupedResponse(BaseModel):
+    pending: list[WorkerApplicationJob] = []
+    accepted: list[WorkerApplicationJob] = []
+    rejected: list[WorkerApplicationJob] = []
+    withdrawn: list[WorkerApplicationJob] = []

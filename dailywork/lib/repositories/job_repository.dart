@@ -25,6 +25,51 @@ class EmployerJobsGrouped {
   }
 }
 
+class WorkerApplicationItem {
+  final JobModel job;
+  final String applicationId;
+  final String applicationStatus; // pending | accepted | rejected | withdrawn
+  const WorkerApplicationItem({
+    required this.job,
+    required this.applicationId,
+    required this.applicationStatus,
+  });
+}
+
+class WorkerApplicationsGrouped {
+  final List<WorkerApplicationItem> pending;
+  final List<WorkerApplicationItem> accepted;
+  final List<WorkerApplicationItem> rejected;
+  final List<WorkerApplicationItem> withdrawn;
+  const WorkerApplicationsGrouped({
+    required this.pending,
+    required this.accepted,
+    required this.rejected,
+    required this.withdrawn,
+  });
+
+  List<WorkerApplicationItem> get all =>
+      [...pending, ...accepted, ...rejected, ...withdrawn];
+
+  factory WorkerApplicationsGrouped.fromJson(Map<String, dynamic> json) {
+    List<WorkerApplicationItem> parse(String key) =>
+        ((json[key] as List<dynamic>?) ?? []).map((e) {
+      final m = e as Map<String, dynamic>;
+      return WorkerApplicationItem(
+        job: JobModel.fromJson(m),
+        applicationId: m['application_id'] as String,
+        applicationStatus: m['application_status'] as String,
+      );
+    }).toList();
+    return WorkerApplicationsGrouped(
+      pending: parse('pending'),
+      accepted: parse('accepted'),
+      rejected: parse('rejected'),
+      withdrawn: parse('withdrawn'),
+    );
+  }
+}
+
 abstract class JobRepository {
   Future<List<JobModel>> getJobs({String? categoryId, JobFilter? filter});
   Future<JobModel> getJobById(String id);
