@@ -163,6 +163,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
+      // Employer post-job wizard — outside ShellRoute (no bottom nav).
+      // MUST precede '/employer/jobs/:id' so the static 'new' segment wins;
+      // go_router matches in declaration order and ':id' would otherwise
+      // capture 'new' and try to load a job with id "new".
+      GoRoute(
+        path: '/employer/jobs/new',
+        builder: (context, state) => const EmployerPostJobScreen(),
+      ),
+
       // Employer section (authenticated only).
       ShellRoute(
         builder: (context, state, child) => EmployerShell(child: child),
@@ -188,11 +197,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // Employer post-job wizard — outside ShellRoute (no bottom nav).
-      GoRoute(
-        path: '/employer/jobs/new',
-        builder: (context, state) => const EmployerPostJobScreen(),
-      ),
       GoRoute(
         path: '/employer/jobs/:id/edit',
         builder: (context, state) => EmployerPostJobScreen(
