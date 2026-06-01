@@ -24,6 +24,34 @@ class ApplicationModel {
   );
 }
 
+/// Applicant row for the employer's applicant-management screen.
+class ApplicantModel {
+  final String applicationId;
+  final String workerId;
+  final String status;
+  final String displayName;
+  final String? phoneNumber;
+  final double? ratingAvg;
+
+  const ApplicantModel({
+    required this.applicationId,
+    required this.workerId,
+    required this.status,
+    required this.displayName,
+    this.phoneNumber,
+    this.ratingAvg,
+  });
+
+  factory ApplicantModel.fromJson(Map<String, dynamic> json) => ApplicantModel(
+    applicationId: json['application_id'] as String,
+    workerId: json['worker_id'] as String,
+    status: json['status'] as String,
+    displayName: (json['display_name'] as String?) ?? 'Worker',
+    phoneNumber: json['phone_number'] as String?,
+    ratingAvg: (json['rating_avg'] as num?)?.toDouble(),
+  );
+}
+
 class ApiApplicationRepository {
   final Dio _dio;
 
@@ -34,21 +62,30 @@ class ApiApplicationRepository {
     return ApplicationModel.fromJson(response.data!);
   }
 
-  Future<List<ApplicationModel>> listForJob(String jobId) async {
+  Future<List<ApplicantModel>> listForJob(String jobId) async {
     final response = await _dio.get<Map<String, dynamic>>('/jobs/$jobId/applications');
     final data = response.data!;
-    return (data['data'] as List<dynamic>)
-        .map((a) => ApplicationModel.fromJson(a as Map<String, dynamic>))
+    return ((data['data'] as List<dynamic>?) ?? [])
+        .map((a) => ApplicantModel.fromJson(a as Map<String, dynamic>))
         .toList();
   }
 
-  Future<ApplicationModel> updateStatus(String applicationId, String status) async {
+  Future<ApplicationModel> _patch(String applicationId, Map<String, dynamic> body) async {
     final response = await _dio.patch<Map<String, dynamic>>(
       '/applications/$applicationId',
-      data: {'status': status},
+      data: body,
     );
     return ApplicationModel.fromJson(response.data!);
   }
+
+  Future<ApplicationModel> accept(String applicationId) =>
+      _patch(applicationId, {'status': 'accepted'});
+
+  Future<ApplicationModel> reject(String applicationId) =>
+      _patch(applicationId, {'status': 'rejected'});
+
+  Future<ApplicationModel> withdraw(String applicationId, {String? reason}) =>
+      _patch(applicationId, {'status': 'withdrawn', 'reason': reason});
 }
 
 final apiApplicationRepositoryProvider = Provider<ApiApplicationRepository>((ref) {
