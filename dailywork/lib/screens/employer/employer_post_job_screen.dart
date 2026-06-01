@@ -143,17 +143,30 @@ class _Step1 extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final strings = ref.watch(stringsProvider);
     final categoriesAsync = ref.watch(categoryListProvider);
+    const fieldText = TextStyle(fontSize: 16);
+    final hasLocation = state.addressText != null || state.locationLat != null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Text(
+          strings['job_details'] ?? 'Job details',
+          style: GoogleFonts.nunito(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.primary,
+          ),
+        ),
+        const SizedBox(height: 12),
         categoriesAsync.when(
           loading: () => const LinearProgressIndicator(),
           error: (err, st) => const Text('Failed to load categories'),
           data: (cats) => DropdownButtonFormField<String>(
             initialValue: state.categoryId,
+            style: fieldText.copyWith(color: Colors.black87),
             decoration: InputDecoration(
               labelText: strings['job_category'] ?? 'Category',
               border: const OutlineInputBorder(),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
             ),
             items: cats.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
             onChanged: (v) => ref
@@ -161,52 +174,69 @@ class _Step1 extends ConsumerWidget {
                 .update((s) => s.copyWith(categoryId: v)),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         TextFormField(
           initialValue: state.title,
+          style: fieldText,
           decoration: InputDecoration(
             labelText: strings['job_title_field'] ?? 'Job title',
             border: const OutlineInputBorder(),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
           ),
           onChanged: (v) => ref
               .read(postJobWizardProvider.notifier)
               .update((s) => s.copyWith(title: v)),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         TextFormField(
           initialValue: state.description,
           maxLines: 3,
+          style: fieldText,
           decoration: InputDecoration(
             labelText: strings['job_description'] ?? 'Description (optional)',
             border: const OutlineInputBorder(),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
           ),
           onChanged: (v) => ref
               .read(postJobWizardProvider.notifier)
               .update((s) => s.copyWith(description: v)),
         ),
+        const SizedBox(height: 24),
+        Text(
+          strings['location'] ?? 'Location',
+          style: GoogleFonts.nunito(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.primary,
+          ),
+        ),
         const SizedBox(height: 12),
-        OutlinedButton.icon(
-          icon: const Icon(Icons.location_on_outlined),
-          label: Text(state.addressText ??
-              (state.locationLat != null
-                  ? '${state.locationLat!.toStringAsFixed(4)}, ${state.locationLng!.toStringAsFixed(4)}'
-                  : strings['pick_location'] ?? 'Pick location')),
-          onPressed: () {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              builder: (_) => LocationPickerSheet(
-                initialLat: state.locationLat,
-                initialLng: state.locationLng,
-                initialAddress: state.addressText,
-                onPicked: (p) {
-                  ref.read(postJobWizardProvider.notifier).update((s) =>
-                      s.copyWith(locationLat: p.lat, locationLng: p.lng, addressText: p.address));
-                },
-              ),
-            );
+        LocationPickerSheet(
+          embedded: true,
+          initialLat: state.locationLat,
+          initialLng: state.locationLng,
+          initialAddress: state.addressText,
+          onPicked: (p) {
+            ref.read(postJobWizardProvider.notifier).update((s) =>
+                s.copyWith(locationLat: p.lat, locationLng: p.lng, addressText: p.address));
           },
         ),
+        if (hasLocation) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(Icons.check_circle, color: AppTheme.accent, size: 18),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  state.addressText ??
+                      '${state.locationLat!.toStringAsFixed(4)}, ${state.locationLng!.toStringAsFixed(4)}',
+                  style: GoogleFonts.nunito(fontSize: 13, color: Colors.grey[700]),
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
@@ -239,6 +269,48 @@ class _Step2 extends ConsumerWidget {
   String _toHms(TimeOfDay t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:00';
 
+  Widget _periodGroup({
+    required String label,
+    required String dateText,
+    required String timeText,
+    required VoidCallback onPickDate,
+    required VoidCallback onPickTime,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.nunito(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.primary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onPickDate,
+                icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                label: Text(dateText),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onPickTime,
+                icon: const Icon(Icons.access_time, size: 18),
+                label: Text(timeText),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final strings = ref.watch(stringsProvider);
@@ -246,66 +318,57 @@ class _Step2 extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () async {
-                  final d = await _pickDate(context, state.startDate);
-                  if (d != null) notifier.update((s) => s.copyWith(startDate: d));
-                },
-                child: Text('${strings['start_date'] ?? 'Start'}: ${_fmt(state.startDate)}'),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () async {
-                  final d = await _pickDate(context, state.endDate);
-                  if (d != null) notifier.update((s) => s.copyWith(endDate: d));
-                },
-                child: Text('${strings['end_date'] ?? 'End'}: ${_fmt(state.endDate)}'),
-              ),
-            ),
-          ],
+        _periodGroup(
+          label: strings['start_period'] ?? 'Start',
+          dateText: _fmt(state.startDate),
+          timeText: _fmtT(state.startTime),
+          onPickDate: () async {
+            final d = await _pickDate(context, state.startDate);
+            if (d != null) notifier.update((s) => s.copyWith(startDate: d));
+          },
+          onPickTime: () async {
+            final t = await _pickTime(context, state.startTime);
+            if (t != null) notifier.update((s) => s.copyWith(startTime: _toHms(t)));
+          },
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () async {
-                  final t = await _pickTime(context, state.startTime);
-                  if (t != null) notifier.update((s) => s.copyWith(startTime: _toHms(t)));
-                },
-                child: Text('${strings['start_time_field'] ?? 'Start time'}: ${_fmtT(state.startTime)}'),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () async {
-                  final t = await _pickTime(context, state.endTime);
-                  if (t != null) notifier.update((s) => s.copyWith(endTime: _toHms(t)));
-                },
-                child: Text('${strings['end_time_field'] ?? 'End time'}: ${_fmtT(state.endTime)}'),
-              ),
-            ),
-          ],
+        const SizedBox(height: 20),
+        _periodGroup(
+          label: strings['end_period'] ?? 'End',
+          dateText: _fmt(state.endDate),
+          timeText: _fmtT(state.endTime),
+          onPickDate: () async {
+            final d = await _pickDate(context, state.endDate);
+            if (d != null) notifier.update((s) => s.copyWith(endDate: d));
+          },
+          onPickTime: () async {
+            final t = await _pickTime(context, state.endTime);
+            if (t != null) notifier.update((s) => s.copyWith(endTime: _toHms(t)));
+          },
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 24),
         Row(
           children: [
-            Text(strings['workers_count'] ?? 'Workers needed', style: GoogleFonts.nunito(fontSize: 14)),
-            const Spacer(),
+            Expanded(
+              child: Text(
+                strings['workers_count'] ?? 'Workers needed',
+                style: GoogleFonts.nunito(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.primary,
+                ),
+              ),
+            ),
             IconButton(
+              iconSize: 32,
               icon: const Icon(Icons.remove_circle_outline),
               onPressed: state.workersNeeded > 1
                   ? () => notifier.update((s) => s.copyWith(workersNeeded: s.workersNeeded - 1))
                   : null,
             ),
-            Text('${state.workersNeeded}', style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700)),
+            Text('${state.workersNeeded}',
+                style: GoogleFonts.nunito(fontSize: 22, fontWeight: FontWeight.w700)),
             IconButton(
+              iconSize: 32,
               icon: const Icon(Icons.add_circle_outline),
               onPressed: () => notifier.update((s) => s.copyWith(workersNeeded: s.workersNeeded + 1)),
             ),
