@@ -16,8 +16,8 @@ class ApiJobRepository implements JobRepository {
     final response = await _dio.get<Map<String, dynamic>>(
       '/jobs/',
       queryParameters: {
-        'lat': 12.9716,
-        'lng': 77.5946,
+        'lat': 12.871384,
+        'lng': 74.842644,
         'radius_km': 25,
         'category_id': ?categoryId,
       },

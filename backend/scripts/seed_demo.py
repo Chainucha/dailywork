@@ -1,18 +1,21 @@
-"""Seed focused demo data for the apply -> accept loop.
+"""Seed focused demo data around the two dev-bypass accounts.
 
-Builds everything around the two dev-bypass demo accounts (DEV_WORKER_PHONE /
-DEV_EMPLOYER_PHONE) so a presenter can log in as either and immediately show:
+Scope (kept deliberately small for a clean demo):
+  * Only the two real demo accounts exist as users — no extra applicant rows.
+  * All jobs are in the Agriculture category, centred on Mangalore.
+  * Employer (DEV_EMPLOYER_PHONE) gets 1-2 jobs in every status section:
+    open, assigned, in_progress, completed, cancelled.
+  * Worker (DEV_WORKER_PHONE) only carries completed ("done") jobs, with
+    bidirectional reviews so ratings and jobs_completed populate.
 
-  * Employer: jobs with pending applicants ready to accept/reject, one job that
-    flips open -> assigned on the final accept, and one empty job to apply to live.
-  * Worker: pending applications plus one already-accepted job.
+Jobs with no applicants (open/assigned/in_progress/cancelled) get their
+workers_assigned set directly — the sync trigger only fires on application
+events, so those values persist. Completed jobs receive a real accepted
+application from the demo worker, which the trigger counts.
 
-Idempotent: safe to run repeatedly. Demo jobs use fixed UUIDs and are deleted
-(cascading their applications) before re-insert; extra applicant workers are
-upserted; the two real demo accounts are created via the same path the auth
-dev-bypass uses, so logging in afterwards reuses them.
-
-Run from the backend directory with the project .env present:
+Idempotent: demo jobs use fixed UUIDs and are deleted (cascading their
+applications and reviews) before re-insert. The two accounts are reused via
+the same path as the auth dev-bypass. Run from the backend directory:
 
     python -m scripts.seed_demo
 """
@@ -23,17 +26,19 @@ from app.config import settings
 from app.supabase_client import get_supabase
 from app.services.auth_service import _ensure_dev_user
 
-# Fixed UUIDs so re-runs replace the same rows instead of piling up.
-XW = {
-    "xw1": "dddddddd-0001-0000-0000-000000000000",
-    "xw2": "dddddddd-0002-0000-0000-000000000000",
-    "xw3": "dddddddd-0003-0000-0000-000000000000",
-}
+# Demo map centre — Mangalore.
+CENTER_LAT = 12.871384
+CENTER_LNG = 74.842644
+
+# Fixed job UUIDs so re-runs replace the same rows.
 DJ = {
-    "dj1": "cccccccc-0001-0000-0000-000000000000",
-    "dj2": "cccccccc-0002-0000-0000-000000000000",
-    "dj3": "cccccccc-0003-0000-0000-000000000000",
-    "dj4": "cccccccc-0004-0000-0000-000000000000",
+    "open1": "cccccccc-0001-0000-0000-000000000000",
+    "open2": "cccccccc-0002-0000-0000-000000000000",
+    "assigned": "cccccccc-0003-0000-0000-000000000000",
+    "inprogress": "cccccccc-0004-0000-0000-000000000000",
+    "done1": "cccccccc-0005-0000-0000-000000000000",
+    "done2": "cccccccc-0006-0000-0000-000000000000",
+    "cancelled": "cccccccc-0007-0000-0000-000000000000",
 }
 
 
@@ -46,10 +51,6 @@ def main() -> None:
         raise SystemExit("Refusing to seed demo data in production.")
     if not settings.DEV_WORKER_PHONE or not settings.DEV_EMPLOYER_PHONE:
         raise SystemExit("Set DEV_WORKER_PHONE and DEV_EMPLOYER_PHONE in .env first.")
-    if not settings.SUPABASE_JWT_SECRET:
-        # _ensure_dev_user itself does not need the secret, but login later does;
-        # warn early so the demo isn't half-set-up.
-        print("WARNING: SUPABASE_JWT_SECRET is empty — dev OTP login will fail.")
 
     db = get_supabase()
 
@@ -57,146 +58,95 @@ def main() -> None:
     employer_id = _ensure_dev_user(settings.DEV_EMPLOYER_PHONE, "employer")
     worker_id = _ensure_dev_user(settings.DEV_WORKER_PHONE, "worker")
 
-    # Friendlier display values than the defaults baked into _ensure_dev_user.
     db.table("users").update({"display_name": "Demo Worker"}).eq("id", worker_id).execute()
     db.table("employer_profiles").update(
-        {"business_name": "Demo Builders", "business_type": "Construction"}
+        {"business_name": "Demo Agro Farm", "business_type": "Agriculture"}
     ).eq("user_id", employer_id).execute()
+    # rating_avg is left to the reviews trigger (worker has completed jobs below).
     db.table("worker_profiles").update(
-        {"skills": ["general labour", "loading", "cleaning"], "rating_avg": 4.5}
+        {"skills": ["harvesting", "planting", "irrigation"]}
     ).eq("user_id", worker_id).execute()
 
-    # --- 2. Extra applicant workers (plain rows, no auth needed) --------------
-    extra_workers = [
-        (XW["xw1"], "+10000000011", "Ravi Kumar", ["masonry", "painting"], 4.5),
-        (XW["xw2"], "+10000000012", "Anita Sharma", ["cleaning", "cooking"], 4.0),
-        (XW["xw3"], "+10000000013", "Suresh Patel", ["loading", "driving"], 5.0),
-    ]
-    db.table("users").upsert(
-        [
-            {
-                "id": wid,
-                "phone_number": phone,
-                "user_type": "worker",
-                "display_name": name,
-                "location_lat": 12.97,
-                "location_lng": 77.59,
-            }
-            for wid, phone, name, _skills, _rating in extra_workers
-        ],
-        on_conflict="id",
-    ).execute()
-    db.table("worker_profiles").upsert(
-        [
-            {
-                "user_id": wid,
-                "skills": skills,
-                "availability_status": True,
-                "rating_avg": rating,
-            }
-            for wid, _phone, _name, skills, rating in extra_workers
-        ],
-        on_conflict="user_id",
-    ).execute()
+    # --- 2. Agriculture category id ------------------------------------------
+    cat = db.table("categories").select("id").eq("name", "Agriculture").execute()
+    if not cat.data:
+        raise SystemExit("Agriculture category missing — run migration 004 seed.")
+    agri_id = cat.data[0]["id"]
 
-    # --- 3. Categories lookup -------------------------------------------------
-    cats = {c["name"]: c["id"] for c in db.table("categories").select("id,name").execute().data}
+    def job(jid, title, desc, lat, lng, area, wage, needed, status,
+            start_off, end_off, assigned=0, urgent=False, cancel=None):
+        row = {
+            "id": jid,
+            "employer_id": employer_id,
+            "category_id": agri_id,
+            "title": title,
+            "description": desc,
+            "location_lat": lat,
+            "location_lng": lng,
+            "address_text": f"{area}, Mangalore",
+            "wage_per_day": wage,
+            "workers_needed": needed,
+            "workers_assigned": assigned,
+            "status": status,
+            "start_date": _d(start_off),
+            "end_date": _d(end_off),
+            "is_urgent": urgent,
+        }
+        if cancel is not None:
+            row["cancellation_reason"] = cancel
+        return row
 
-    def cat(name: str) -> str:
-        return cats[name]
-
-    # --- 4. Jobs (delete first to cascade old applications, then insert) ------
+    # --- 3. Jobs (delete first to cascade old applications + reviews) --------
     db.table("jobs").delete().in_("id", list(DJ.values())).execute()
-    db.table("jobs").insert(
-        [
-            {
-                "id": DJ["dj1"],
-                "employer_id": employer_id,
-                "category_id": cat("General Labour"),
-                "title": "Site Helper - MG Road",
-                "description": "General site help: carrying materials, basic clean-up. No experience needed.",
-                "location_lat": 12.9756,
-                "location_lng": 77.6073,
-                "address_text": "MG Road, Bengaluru",
-                "wage_per_day": 700,
-                "workers_needed": 2,
-                "status": "open",
-                "start_date": _d(1),
-                "end_date": _d(4),
-                "is_urgent": False,
-            },
-            {
-                "id": DJ["dj2"],
-                "employer_id": employer_id,
-                "category_id": cat("Cleaning"),
-                "title": "Office Cleaning - Indiranagar",
-                "description": "Evening cleaning of a small office. One person needed.",
-                "location_lat": 12.9660,
-                "location_lng": 77.5980,
-                "address_text": "Indiranagar, Bengaluru",
-                "wage_per_day": 550,
-                "workers_needed": 1,
-                "status": "open",
-                "start_date": _d(0),
-                "end_date": _d(1),
-                "is_urgent": True,
-            },
-            {
-                "id": DJ["dj3"],
-                "employer_id": employer_id,
-                "category_id": cat("Loading & Moving"),
-                "title": "Warehouse Loading Shift",
-                "description": "Load and unload goods. Heavy lifting involved. Several workers needed.",
-                "location_lat": 12.9555,
-                "location_lng": 77.6140,
-                "address_text": "Peenya, Bengaluru",
-                "wage_per_day": 800,
-                "workers_needed": 3,
-                "status": "open",
-                "start_date": _d(2),
-                "end_date": _d(3),
-                "is_urgent": False,
-            },
-            {
-                "id": DJ["dj4"],
-                "employer_id": employer_id,
-                "category_id": cat("Painting"),
-                "title": "Interior Painting - Whitefield",
-                "description": "Two-coat interior painting of an apartment. Already staffed.",
-                "location_lat": 12.9698,
-                "location_lng": 77.7499,
-                "address_text": "Whitefield, Bengaluru",
-                "wage_per_day": 850,
-                "workers_needed": 2,
-                "status": "assigned",
-                "start_date": _d(-1),
-                "end_date": _d(6),
-                "is_urgent": False,
-            },
-        ]
-    ).execute()
+    db.table("jobs").insert([
+        # open (shown in worker feed) — no applicants
+        job(DJ["open1"], "Paddy Field Harvesting", "Harvest paddy by hand. No experience needed, tools provided.",
+            12.8714, 74.8426, "Kankanady", 600, 4, "open", 1, 4),
+        job(DJ["open2"], "Coconut Plucking", "Pluck coconuts from a small plantation. Climbing experience preferred.",
+            12.8780, 74.8500, "Bejai", 750, 2, "open", 0, 2, urgent=True),
+        # assigned — staffed, no live applicants (count set directly)
+        job(DJ["assigned"], "Banana Plantation Weeding", "Weeding and clearing around banana plants.",
+            12.8650, 74.8350, "Ullal", 550, 2, "assigned", 0, 6, assigned=2),
+        # in_progress — currently underway
+        job(DJ["inprogress"], "Areca Nut Drying", "Spread and turn areca nuts for drying.",
+            12.8800, 74.8550, "Surathkal", 500, 1, "in_progress", -2, 2, assigned=1),
+        # completed — these are the worker's "done" jobs
+        job(DJ["done1"], "Mango Orchard Harvesting", "Picked and crated mangoes. Completed last week.",
+            12.8600, 74.8300, "Deralakatte", 700, 1, "completed", -10, -5),
+        job(DJ["done2"], "Vegetable Field Planting", "Planted seedlings across the field. Completed.",
+            12.8900, 74.8600, "Mulki", 650, 1, "completed", -7, -6),
+        # cancelled
+        job(DJ["cancelled"], "Sugarcane Cutting", "Cut and bundle sugarcane.",
+            12.8550, 74.8480, "Bantwal", 800, 3, "cancelled", 1, 3,
+            cancel="Crop sold to a contractor instead."),
+    ]).execute()
 
-    # --- 5. Applications (workers_assigned is set by the DB trigger) ----------
-    # dj1: open, needs 2 -> three pending applicants to demo accept/reject.
-    # dj2: open, needs 1 -> single pending -> accepting flips it to assigned.
-    # dj3: open, needs 3 -> no applicants -> apply live as the worker.
-    # dj4: assigned -> demo worker + xw1 accepted (trigger sets assigned=2).
-    db.table("applications").insert(
-        [
-            {"job_id": DJ["dj1"], "worker_id": worker_id, "status": "pending"},
-            {"job_id": DJ["dj1"], "worker_id": XW["xw1"], "status": "pending"},
-            {"job_id": DJ["dj1"], "worker_id": XW["xw2"], "status": "pending"},
-            {"job_id": DJ["dj2"], "worker_id": worker_id, "status": "pending"},
-            {"job_id": DJ["dj4"], "worker_id": worker_id, "status": "accepted"},
-            {"job_id": DJ["dj4"], "worker_id": XW["xw1"], "status": "accepted"},
-        ]
-    ).execute()
+    # --- 4. Applications: worker accepted on the two completed jobs only ------
+    # (trigger sets workers_assigned = 1 on each.)
+    db.table("applications").insert([
+        {"job_id": DJ["done1"], "worker_id": worker_id, "status": "accepted"},
+        {"job_id": DJ["done2"], "worker_id": worker_id, "status": "accepted"},
+    ]).execute()
 
-    print("Demo seed complete.")
-    print(f"  Employer {settings.DEV_EMPLOYER_PHONE} -> {employer_id}")
-    print(f"  Worker   {settings.DEV_WORKER_PHONE} -> {worker_id}")
-    print("  Jobs: 4 (dj1 open+3 applicants, dj2 open+1, dj3 open empty, dj4 assigned)")
-    print(f"  Login OTP: {settings.DEV_BYPASS_OTP}")
+    # --- 5. Reviews on the completed jobs (trigger recalculates ratings) ------
+    db.table("reviews").insert([
+        {"reviewer_id": employer_id, "reviewee_id": worker_id,
+         "job_id": DJ["done1"], "rating": 5, "comment": "Excellent harvest, very careful."},
+        {"reviewer_id": worker_id, "reviewee_id": employer_id,
+         "job_id": DJ["done1"], "rating": 5, "comment": "Good pay, clear work."},
+        {"reviewer_id": employer_id, "reviewee_id": worker_id,
+         "job_id": DJ["done2"], "rating": 4, "comment": "Solid planting work."},
+        {"reviewer_id": worker_id, "reviewee_id": employer_id,
+         "job_id": DJ["done2"], "rating": 4, "comment": "Fair employer."},
+    ]).execute()
+
+    print("Demo seed complete (Mangalore / Agriculture).")
+    print(f"  Employer {settings.DEV_EMPLOYER_PHONE} -> {employer_id}  (Demo Agro Farm)")
+    print(f"  Worker   {settings.DEV_WORKER_PHONE} -> {worker_id}  (Demo Worker)")
+    print("  Employer jobs per section: open x2, assigned x1, in_progress x1,")
+    print("                             completed x2, cancelled x1")
+    print("  Worker: 2 completed jobs, rating ~4.5 from reviews.")
+    print(f"  Centre: {CENTER_LAT}, {CENTER_LNG}   Login OTP: {settings.DEV_BYPASS_OTP}")
 
 
 if __name__ == "__main__":

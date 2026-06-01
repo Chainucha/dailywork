@@ -97,8 +97,9 @@ class _LocationPickerSheetState extends ConsumerState<LocationPickerSheet> {
     }
   }
 
-  double get _defaultLat => _selLat ?? widget.initialLat ?? _gpsLat ?? 12.9716;
-  double get _defaultLng => _selLng ?? widget.initialLng ?? _gpsLng ?? 77.5946;
+  // Fallback centre is Mangalore (matches the demo data + feed query).
+  double get _defaultLat => _selLat ?? widget.initialLat ?? _gpsLat ?? 12.871384;
+  double get _defaultLng => _selLng ?? widget.initialLng ?? _gpsLng ?? 74.842644;
 
   Future<void> _useGps() async {
     setState(() { _busy = true; _error = null; });
