@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dailywork/core/network/api_client.dart';
+import 'package:dailywork/repositories/job_repository.dart';
 
 /// Minimal Application DTO — only the fields the UI currently needs.
 class ApplicationModel {
@@ -86,6 +87,12 @@ class ApiApplicationRepository {
 
   Future<ApplicationModel> withdraw(String applicationId, {String? reason}) =>
       _patch(applicationId, {'status': 'withdrawn', 'reason': reason});
+
+  Future<WorkerApplicationsGrouped> getMyApplications() async {
+    final response =
+        await _dio.get<Map<String, dynamic>>('/workers/me/applications');
+    return WorkerApplicationsGrouped.fromJson(response.data!);
+  }
 }
 
 final apiApplicationRepositoryProvider = Provider<ApiApplicationRepository>((ref) {
