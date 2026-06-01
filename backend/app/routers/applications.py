@@ -2,7 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from app.dependencies import get_current_user, require_worker, require_employer
-from app.schemas.applications import ApplicationResponse, ApplicationStatusUpdate
+from app.schemas.applications import (
+    ApplicationResponse,
+    ApplicationStatusUpdate,
+    ApplicantListResponse,
+)
+from app.services import application_service
 from app.supabase_client import get_supabase
 
 router = APIRouter(tags=["applications"])
@@ -34,15 +39,36 @@ async def apply_for_job(
     if existing.data:
         raise HTTPException(status_code=409, detail="Already applied for this job")
 
+    try:
+        application_service.enforce_active_cap(db, worker["id"])
+    except ValueError:
+        raise HTTPException(
+            status_code=409,
+            detail="You're at your active-job limit. Finish a current job first.",
+        )
+
     result = db.table("applications").insert({
         "job_id": job_id,
         "worker_id": worker["id"],
         "status": "pending",
     }).execute()
+
+    # Notify employer (best-effort).
+    try:
+        from app.services.notification_service import dispatch_notification
+        employer = db.table("jobs").select("employer_id").eq("id", job_id).execute().data[0]
+        dispatch_notification(
+            user_id=employer["employer_id"],
+            notif_type="application_received",
+            data={"job_id": str(job_id), "application_id": str(result.data[0]["id"])},
+        )
+    except Exception:
+        pass
+
     return result.data[0]
 
 
-@router.get("/jobs/{job_id}/applications")
+@router.get("/jobs/{job_id}/applications", response_model=ApplicantListResponse)
 async def list_job_applications(
     job_id: str,
     employer: dict = Depends(require_employer),
@@ -55,14 +81,16 @@ async def list_job_applications(
     if job_result.data[0]["employer_id"] != employer["id"]:
         raise HTTPException(status_code=403, detail="Not your job")
 
-    result = (
+    rows = (
         db.table("applications")
-        .select("*, worker:worker_id(id, phone_number, user_type)")
+        .select("*")
         .eq("job_id", job_id)
         .order("created_at", desc=False)
         .execute()
+        .data
+        or []
     )
-    return {"data": result.data}
+    return {"data": application_service.enrich_applicants(db, rows)}
 
 
 @router.patch("/applications/{application_id}", response_model=ApplicationResponse)
@@ -74,55 +102,47 @@ async def update_application_status(
     current_user: dict = Depends(get_current_user),
 ):
     db = get_supabase()
-
-    app_result = (
-        db.table("applications")
-        .select("*, job:job_id(employer_id, workers_assigned, workers_needed, start_date)")
-        .eq("id", application_id)
-        .execute()
-    )
-    if not app_result.data:
-        raise HTTPException(status_code=404, detail="Application not found")
-
-    application = app_result.data[0]
-    job = application["job"]
     new_status = body.status
 
-    if new_status in ("accepted", "rejected"):
-        if current_user["user_type"] != "employer":
-            raise HTTPException(status_code=403, detail="Only employers can accept/reject")
-        if job["employer_id"] != current_user["id"]:
-            raise HTTPException(status_code=403, detail="Not your job")
-        if application["status"] != "pending":
-            raise HTTPException(status_code=400, detail="Can only accept/reject pending applications")
-        if new_status == "accepted" and job["workers_assigned"] >= job["workers_needed"]:
+    try:
+        if new_status == "accepted":
+            if current_user["user_type"] != "employer":
+                raise HTTPException(status_code=403, detail="Only employers can accept")
+            updated = application_service.accept_application(db, application_id, current_user["id"])
+        elif new_status == "rejected":
+            if current_user["user_type"] != "employer":
+                raise HTTPException(status_code=403, detail="Only employers can reject")
+            updated = application_service.reject_application(db, application_id, current_user["id"])
+        elif new_status == "withdrawn":
+            if current_user["user_type"] == "employer":
+                raise HTTPException(status_code=403, detail="Employers cannot withdraw applications")
+            updated = application_service.withdraw_application(
+                db, application_id, current_user["id"], body.reason
+            )
+        else:  # pragma: no cover — Literal blocks other values
+            raise HTTPException(status_code=400, detail="Unsupported status")
+    except ValueError as e:
+        code = str(e)
+        if code in ("not_found", "job_not_found"):
+            raise HTTPException(status_code=404, detail="Application not found")
+        if code == "forbidden":
+            raise HTTPException(status_code=403, detail="Not allowed")
+        if code == "at_capacity":
             raise HTTPException(status_code=400, detail="Job has reached worker capacity")
+        if code == "bad_status":
+            raise HTTPException(status_code=400, detail="Invalid status transition")
+        raise
 
-    elif new_status == "withdrawn":
-        if current_user["user_type"] == "employer":
-            raise HTTPException(status_code=403, detail="Employers cannot withdraw applications")
-        if application["worker_id"] != current_user["id"]:
-            raise HTTPException(status_code=403, detail="Not your application")
-        if application["status"] not in ("pending", "accepted"):
-            raise HTTPException(status_code=400, detail="Cannot withdraw in current status")
-
-    result = (
-        db.table("applications")
-        .update({"status": new_status})
-        .eq("id", application_id)
-        .execute()
-    )
-
-    # Write notification record (best-effort)
+    # Notify worker on employer decisions (best-effort).
     try:
         from app.services.notification_service import dispatch_notification
         if new_status in ("accepted", "rejected"):
             dispatch_notification(
-                user_id=application["worker_id"],
+                user_id=str(updated["worker_id"]),
                 notif_type=f"application_{new_status}",
-                data={"job_id": str(application["job_id"]), "application_id": str(application["id"])},
+                data={"job_id": str(updated["job_id"]), "application_id": str(updated["id"])},
             )
     except Exception:
         pass
 
-    return result.data[0]
+    return updated
