@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -44,6 +45,16 @@ class WorkerJobsScreen extends ConsumerWidget {
           SnackBar(
               content: Text(
                   strings['application_withdrawn'] ?? 'Application withdrawn')),
+        );
+      }
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final detail = data is Map ? data['detail']?.toString() : null;
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(detail ??
+                  (strings['action_failed_toast'] ?? 'Action failed — try again'))),
         );
       }
     } catch (_) {

@@ -119,7 +119,9 @@ class JobCard extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        if (job.isUrgent)
+                        if (applicationStatus != null)
+                          ApplicationStatusBadge(status: applicationStatus!)
+                        else if (job.isUrgent)
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 3),
@@ -137,8 +139,6 @@ class JobCard extends ConsumerWidget {
                               ),
                             ),
                           )
-                        else if (applicationStatus != null)
-                          ApplicationStatusBadge(status: applicationStatus!)
                         else
                           StatusBadge(status: job.status),
                       ],
