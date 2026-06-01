@@ -211,18 +211,7 @@ class _Step1 extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 12),
-        LocationPickerSheet(
-          embedded: true,
-          initialLat: state.locationLat,
-          initialLng: state.locationLng,
-          initialAddress: state.addressText,
-          onPicked: (p) {
-            ref.read(postJobWizardProvider.notifier).update((s) =>
-                s.copyWith(locationLat: p.lat, locationLng: p.lng, addressText: p.address));
-          },
-        ),
         if (hasLocation) ...[
-          const SizedBox(height: 8),
           Row(
             children: [
               const Icon(Icons.check_circle, color: AppTheme.accent, size: 18),
@@ -236,7 +225,18 @@ class _Step1 extends ConsumerWidget {
               ),
             ],
           ),
+          const SizedBox(height: 8),
         ],
+        LocationPickerSheet(
+          embedded: true,
+          initialLat: state.locationLat,
+          initialLng: state.locationLng,
+          initialAddress: state.addressText,
+          onPicked: (p) {
+            ref.read(postJobWizardProvider.notifier).update((s) =>
+                s.copyWith(locationLat: p.lat, locationLng: p.lng, addressText: p.address));
+          },
+        ),
       ],
     );
   }
