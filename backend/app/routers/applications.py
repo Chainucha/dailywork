@@ -131,6 +131,11 @@ async def update_application_status(
             raise HTTPException(status_code=400, detail="Job has reached worker capacity")
         if code == "bad_status":
             raise HTTPException(status_code=400, detail="Invalid status transition")
+        if code == "too_late":
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot cancel on or after the job start date",
+            )
         raise
 
     # Notify worker on employer decisions (best-effort).

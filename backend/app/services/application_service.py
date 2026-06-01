@@ -1,3 +1,5 @@
+from datetime import date
+
 from supabase import Client
 
 ACTIVE_CAP = 2  # max concurrent 'accepted' applications per worker
@@ -88,6 +90,14 @@ def withdraw_application(db: Client, application_id: str, worker_id: str, reason
     if application["status"] not in ("pending", "accepted"):
         raise ValueError("bad_status")
 
+    # Cancellation window: workers may withdraw only before the job's start
+    # date. On or after start_date the job is starting/started — too late.
+    job = _job(db, application["job_id"])
+    start = job["start_date"]
+    start_date = date.fromisoformat(start) if isinstance(start, str) else start
+    if date.today() >= start_date:
+        raise ValueError("too_late")
+
     was_accepted = application["status"] == "accepted"
     update = {"status": "withdrawn"}
     if reason is not None:
@@ -95,7 +105,6 @@ def withdraw_application(db: Client, application_id: str, worker_id: str, reason
     db.table("applications").update(update).eq("id", application_id).execute()
 
     if was_accepted:
-        job = _job(db, application["job_id"])
         new_assigned = max(0, job["workers_assigned"] - 1)
         job_update = {"workers_assigned": new_assigned}
         if new_assigned < job["workers_needed"] and job["status"] == "assigned":

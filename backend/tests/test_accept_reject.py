@@ -34,15 +34,20 @@ def env():
     db.table("users").delete().eq("id", employer_id).execute()
 
 
-def _seed_job(db, employer_id, needed=1, status="open"):
+def _seed_job(db, employer_id, needed=1, status="open", start_date="2026-01-01"):
     job_id = str(uuid.uuid4())
     db.table("jobs").insert({
         "id": job_id, "employer_id": employer_id, "category_id": _cat(db),
         "title": f"acc-{job_id}", "location_lat": 0, "location_lng": 0,
         "wage_per_day": 100, "workers_needed": needed, "workers_assigned": 0,
-        "start_date": "2026-01-01", "end_date": "2026-01-02", "status": status,
+        "start_date": start_date, "end_date": "2030-01-02", "status": status,
     }).execute()
     return job_id
+
+
+# A start_date safely in the future for tests that exercise the
+# "withdraw allowed before start date" path.
+_FUTURE = "2999-01-01"
 
 
 def _seed_app(db, job_id, worker_id, status="pending"):
@@ -153,7 +158,7 @@ def test_reject_leaves_assigned_unchanged(env):
 
 def test_withdraw_accepted_decrements_and_reverts(env):
     db, employer_id, worker_id = env["db"], env["employer_id"], env["worker_id"]
-    job_id = _seed_job(db, employer_id, needed=1, status="assigned")
+    job_id = _seed_job(db, employer_id, needed=1, status="assigned", start_date=_FUTURE)
     db.table("jobs").update({"workers_assigned": 1}).eq("id", job_id).execute()
     app_id = _seed_app(db, job_id, worker_id, status="accepted")
 
@@ -169,6 +174,32 @@ def test_withdraw_accepted_decrements_and_reverts(env):
         job = db.table("jobs").select("workers_assigned, status").eq("id", job_id).execute().data[0]
         assert job["workers_assigned"] == 0
         assert job["status"] == "open"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_withdraw_blocked_on_or_after_start_date(env):
+    """Cancellation window: a worker cannot withdraw once the job's start
+    date has arrived. The accept stays intact (no DB change)."""
+    db, employer_id, worker_id = env["db"], env["employer_id"], env["worker_id"]
+    # start_date in the past -> on/after start -> withdraw must be rejected.
+    job_id = _seed_job(db, employer_id, needed=1, status="assigned", start_date="2020-01-01")
+    db.table("jobs").update({"workers_assigned": 1}).eq("id", job_id).execute()
+    app_id = _seed_app(db, job_id, worker_id, status="accepted")
+
+    app.dependency_overrides[get_current_user] = lambda: {"id": worker_id, "user_type": "worker"}
+    try:
+        res = client.patch(
+            f"/api/v1/applications/{app_id}",
+            json={"status": "withdrawn"},
+        )
+        assert res.status_code == 400, res.text
+        # unchanged
+        a = db.table("applications").select("status").eq("id", app_id).execute().data[0]
+        assert a["status"] == "accepted"
+        job = db.table("jobs").select("workers_assigned, status").eq("id", job_id).execute().data[0]
+        assert job["workers_assigned"] == 1
+        assert job["status"] == "assigned"
     finally:
         app.dependency_overrides.clear()
 
