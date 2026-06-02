@@ -5,16 +5,26 @@ from supabase import Client
 ACTIVE_CAP = 2  # max concurrent 'accepted' applications per worker
 
 
+# Job statuses that still represent a live commitment for the worker. A
+# completed/cancelled job is done and must not count toward the active cap.
+_ACTIVE_JOB_STATUSES = {"open", "assigned", "in_progress"}
+
+
 def count_active(db: Client, worker_id: str) -> int:
-    """Counts the worker's currently-accepted applications (the cap basis)."""
+    """Counts the worker's accepted applications on still-active jobs (the cap
+    basis). Excludes accepted apps whose job is completed or cancelled."""
     res = (
         db.table("applications")
-        .select("id")
+        .select("id, jobs!inner(status)")
         .eq("worker_id", worker_id)
         .eq("status", "accepted")
         .execute()
     )
-    return len(res.data or [])
+    return sum(
+        1
+        for r in (res.data or [])
+        if (r.get("jobs") or {}).get("status") in _ACTIVE_JOB_STATUSES
+    )
 
 
 def enforce_active_cap(db: Client, worker_id: str) -> None:

@@ -3,9 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:go_router/go_router.dart';
+import 'package:dailywork/core/network/api_client.dart';
 import 'package:dailywork/core/theme/app_theme.dart';
+import 'package:dailywork/models/job_model.dart';
 import 'package:dailywork/providers/language_provider.dart';
 import 'package:dailywork/providers/job_provider.dart';
+import 'package:dailywork/providers/my_posted_jobs_provider.dart';
+import 'package:dailywork/repositories/api/api_job_repository.dart';
 import 'package:dailywork/screens/shared/widgets/status_badge.dart';
 import 'package:dailywork/screens/shared/widgets/language_toggle_button.dart';
 
@@ -17,15 +21,73 @@ String _formatDate(DateTime date) {
   return '${months[date.month - 1]} ${date.day}, ${date.year}';
 }
 
-class EmployerJobDetailScreen extends ConsumerWidget {
+class EmployerJobDetailScreen extends ConsumerStatefulWidget {
   const EmployerJobDetailScreen({super.key, required this.jobId});
 
   final String jobId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EmployerJobDetailScreen> createState() =>
+      _EmployerJobDetailScreenState();
+}
+
+class _EmployerJobDetailScreenState
+    extends ConsumerState<EmployerJobDetailScreen> {
+  bool _busy = false;
+
+  Future<void> _setStatus(String jobId, String status, String successKey) async {
+    final strings = ref.read(stringsProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(apiJobRepositoryProvider)
+          .updateJob(jobId, {'status': status});
+      ref.invalidate(jobDetailProvider(jobId));
+      ref.invalidate(myPostedJobsProvider);
+      messenger.showSnackBar(
+          SnackBar(content: Text(strings[successKey] ?? 'Done')));
+    } catch (e) {
+      final apiError = ApiException.extract(e);
+      messenger.showSnackBar(SnackBar(
+        content: Text(apiError?.message ??
+            (strings['action_failed_toast'] ?? 'Action failed — try again')),
+      ));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<bool> _confirm(String title, String body, String confirmLabel) async {
+    final strings = ref.read(stringsProvider);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(strings['no'] ?? 'No'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+    return ok ?? false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final strings = ref.watch(stringsProvider);
-    final jobAsync = ref.watch(jobDetailProvider(jobId));
+    final jobAsync = ref.watch(jobDetailProvider(widget.jobId));
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -249,28 +311,97 @@ class EmployerJobDetailScreen extends ConsumerWidget {
                 ),
               ),
 
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.accent,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    onPressed: () => context.push('/employer/jobs/${job.id}/edit'),
-                    child: Text(
-                      strings['edit_job_title'] ?? 'Edit job',
-                      style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ),
-              ),
+              _bottomBar(job, strings),
             ],
           );
         },
+      ),
+    );
+  }
+
+  /// Status-driven actions: Start Job (assigned -> in_progress), Mark Complete
+  /// (in_progress -> completed), and Edit (only before the job has started).
+  Widget _bottomBar(JobModel job, Map<String, String> strings) {
+    final buttons = <Widget>[];
+
+    if (job.status == JobStatus.assigned) {
+      buttons.add(_actionButton(
+        label: strings['start_job'] ?? 'Start Job',
+        color: AppTheme.accent,
+        onPressed:
+            _busy ? null : () => _setStatus(job.id, 'in_progress', 'job_started'),
+      ));
+    } else if (job.status == JobStatus.inProgress) {
+      buttons.add(_actionButton(
+        label: strings['mark_complete'] ?? 'Mark Complete',
+        color: Colors.green,
+        onPressed: _busy
+            ? null
+            : () async {
+                final ok = await _confirm(
+                  strings['complete_confirm_title'] ?? 'Mark job complete?',
+                  strings['complete_confirm_body'] ??
+                      'Confirm this job is finished. Workers can then be '
+                          'reviewed. This cannot be undone.',
+                  strings['mark_complete'] ?? 'Mark Complete',
+                );
+                if (ok) await _setStatus(job.id, 'completed', 'job_completed');
+              },
+      ));
+    }
+
+    // Edit only while the job has not started yet.
+    if (job.status == JobStatus.open || job.status == JobStatus.assigned) {
+      buttons.add(_actionButton(
+        label: strings['edit_job_title'] ?? 'Edit job',
+        color: AppTheme.primary,
+        onPressed:
+            _busy ? null : () => context.push('/employer/jobs/${job.id}/edit'),
+      ));
+    }
+
+    if (buttons.isEmpty) return const SizedBox.shrink();
+
+    final spaced = <Widget>[];
+    for (var i = 0; i < buttons.length; i++) {
+      if (i > 0) spaced.add(const SizedBox(height: 10));
+      spaced.add(buttons[i]);
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      child: Column(mainAxisSize: MainAxisSize.min, children: spaced),
+    );
+  }
+
+  Widget _actionButton({
+    required String label,
+    required Color color,
+    required VoidCallback? onPressed,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+        onPressed: onPressed,
+        child: _busy
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Text(
+                label,
+                style:
+                    GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
       ),
     );
   }

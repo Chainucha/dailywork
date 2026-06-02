@@ -65,6 +65,29 @@ def test_apply_blocked_when_two_accepted(env):
         app.dependency_overrides.clear()
 
 
+def test_apply_allowed_when_accepted_jobs_completed(env):
+    """The active cap counts only accepted apps on still-active jobs. Once a
+    job is completed it is no longer a current commitment, so it must not lock
+    the worker out of applying to new jobs."""
+    db, worker_id, employer_id = env["db"], env["worker_id"], env["employer_id"]
+    for _ in range(2):
+        jid = _seed_open_job(db, employer_id)
+        db.table("applications").insert(
+            {"job_id": jid, "worker_id": worker_id, "status": "accepted"}
+        ).execute()
+        db.table("jobs").update({"status": "completed"}).eq("id", jid).execute()
+    target = _seed_open_job(db, employer_id)
+
+    fake = {"id": worker_id, "user_type": "worker"}
+    app.dependency_overrides[get_current_user] = lambda: fake
+    app.dependency_overrides[require_worker] = lambda: fake
+    try:
+        res = client.post(f"/api/v1/jobs/{target}/apply")
+        assert res.status_code == 201, res.text
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_apply_allowed_with_one_accepted(env):
     db, worker_id, employer_id = env["db"], env["worker_id"], env["employer_id"]
     jid = _seed_open_job(db, employer_id)

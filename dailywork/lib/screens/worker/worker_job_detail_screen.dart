@@ -51,9 +51,9 @@ class _WorkerJobDetailScreenState extends ConsumerState<WorkerJobDetailScreen> {
     } catch (e) {
       if (!mounted) return;
       final apiError = ApiException.extract(e);
-      final msg = apiError?.statusCode == 409
-          ? 'You have already applied for this job'
-          : apiError?.message ?? 'Could not apply. Please try again.';
+      // Surface the server's reason verbatim — a 409 may be a duplicate
+      // ("Already applied...") or the active-job cap, which are different.
+      final msg = apiError?.message ?? 'Could not apply. Please try again.';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(msg), backgroundColor: Colors.red),
       );
