@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:dailywork/core/theme/app_theme.dart';
+import 'package:dailywork/models/job_model.dart';
 import 'package:dailywork/providers/language_provider.dart';
 import 'package:dailywork/providers/my_applications_provider.dart';
 import 'package:dailywork/repositories/api/api_application_repository.dart';
@@ -28,9 +29,17 @@ class WorkerJobsScreen extends ConsumerWidget {
       case _AppFilter.pending:
         return g.pending;
       case _AppFilter.accepted:
-        return g.accepted;
+        // Accepted = still-active accepted apps (job not yet finished).
+        return g.accepted
+            .where((i) => i.job.status != JobStatus.completed)
+            .toList();
       case _AppFilter.done:
-        return [...g.rejected, ...g.withdrawn];
+        // Done = finished jobs the worker was accepted on, plus terminal apps.
+        return [
+          ...g.accepted.where((i) => i.job.status == JobStatus.completed),
+          ...g.rejected,
+          ...g.withdrawn,
+        ];
     }
   }
 
