@@ -1,11 +1,11 @@
-# ChangDee (ช่างดี) — Village Maintenance Dispatch Platform — Design Spec
+# ช่างใกล้บ้าน (ChangKlai) — Village Maintenance Dispatch Platform — Design Spec
 
-**Name:** ChangDee / ช่างดี ("good technician") — Thai-root, low-literacy friendly, trust-forward.
+**Name:** ช่างใกล้บ้าน ("the technician near your home") — Thai-root, low-literacy friendly; captures both wedges (trade clarity + hyperlocal). Short brand for handle/domain: **ChangKlai**.
 **Date:** 2026-06-02
 **Status:** Approved design, pre-implementation
 **Origin:** Fork of `dailywork-bsc` (daily-wage job board). Reuses ~60–70% of stack.
 
-> **Verify before locking name:** LINE OA handle (`@changdee`), `.co.th`/`.com` domain, DBD company-name + DIP trademark clash.
+> **Verify before locking name:** LINE OA handle (`@changklai`), `.co.th`/`.com` domain, DBD company-name + DIP trademark clash. Note: descriptive name → weaker trademark protection (acceptable for pilot). Prior pick "ช่างดี" dropped — clashes with Global House's service brand.
 
 ---
 
