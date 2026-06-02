@@ -12,7 +12,7 @@ A maintenance / general-service platform (gardening, electrical, plumbing, handy
 
 Unlike the incumbent marketplaces (Fixzy, Seekster, ServisHero, Dvers, Fastwork) which are **Bangkok-first, pull-model marketplaces** (customer ↔ independent pro, platform takes commission, reliability is weak), this platform's wedge is:
 
-1. **Owned workforce + control-center dispatch** — employed workers on shifts, a dispatcher pushes jobs. Reliability is the product.
+1. **Managed workforce + control-center dispatch** — vetted **contractors** on committed shifts, a dispatcher pushes jobs. Reliability is the product. Workers are paid **hybrid: standby retainer + per-job commission** (not salaried) — see §4b.
 2. **Hyper-local, secondary city** — dense village → Nakhonsawan town, where incumbents barely operate.
 
 ### Primary goal
@@ -28,7 +28,7 @@ Unlike the incumbent marketplaces (Fixzy, Seekster, ServisHero, Dvers, Fastwork)
 
 - SEA on-demand home-services market ≈ USD 137M (2024), ≈14% CAGR.
 - Incumbents: **Fixzy** (~40k users, 1,200 handymen), **Seekster**, **ServisHero** (5,000+ pros), **Dvers** (1,500+ techs) — all marketplace, urban-first.
-- Gap exploited: **reliability** (guaranteed show-up via owned workforce) + **secondary-city coverage**.
+- Gap exploited: **reliability** (guaranteed show-up via a managed, shift-committed contractor workforce) + **secondary-city coverage**.
 
 ---
 
@@ -53,9 +53,9 @@ Four clients, one backend.
 
 ---
 
-## 4. Worker-supply model — owned core + board overflow (Model C, phased)
+## 4. Worker-supply model — managed core + board overflow (Model C, phased)
 
-- **Phase 1:** owned workers only, on **shifts**, **manual dispatch**. No board.
+- **Phase 1:** managed contractors only, on **shifts**, **manual dispatch**. No board.
 - **Phase 2:** add a **vetted job-board overflow** (reuse the dailywork-bsc application flow) for demand spikes / off-shift gaps.
 
 The board is **not** an open Fastwork-style marketplace. It is gated:
@@ -64,7 +64,30 @@ The board is **not** an open Fastwork-style marketplace. It is gated:
 2. **Category gating** — a worker only sees/applies to jobs in categories an admin approved (`category_approvals`). Electrician jobs are invisible to non-approved electricians.
 3. **Dispatcher confirm** — control center approves the board match before dispatch. Human gate kills bad matches. Low ratings → suspended.
 
-**Unfilled board job** never reaches the customer as a failure: control center absorbs it — call in an off-shift/standby worker (overtime), surge-bump the pay, or reschedule and set expectations. The owned workforce is the guarantee; the board only saves cost when it can. B2B common-area work is scheduled and never has fill risk.
+**Unfilled board job** never reaches the customer as a failure: control center absorbs it — call in an off-shift/standby worker (overtime), surge-bump the pay, or reschedule and set expectations. The managed shift-committed workforce is the guarantee; the board only saves cost when it can. B2B common-area work is scheduled and never has fill risk.
+
+---
+
+## 4b. Worker compensation — hybrid (retainer + commission)
+
+Workers are **contractors, not salaried employees**. Pay = **standby retainer + per-job commission**. This decouples *how workers are paid* from *how jobs are dispatched* — the dispatch/zone/completion architecture is unchanged.
+
+- **Standby retainer** — small fixed pay for committing to a shift window. Rewards being available; underpins the auto-accept reliability guarantee.
+- **Per-job commission** — worker is paid out per completed job. More jobs → more pay = motivation. No idle-payroll cost to the platform.
+- **Platform fee (middleman)** — the platform takes a fee per job (% per category, Grab-style). This is the revenue model on the B2C side.
+
+Mechanics reuse the escrow already in the design:
+```
+job price → gateway escrow (held)
+  on complete → split:
+     platform_fee  (platform cut, % per category)
+     worker_payout (remainder)
+  release → worker paid, platform keeps fee
+```
+
+**Why hybrid, not pure commission:** pure commission + free-to-decline → cherry-picking → marketplace no-show problem (the weakness being beaten). The retainer + on-shift auto-accept preserves availability; commission preserves motivation; decline rate hurts rating + shift priority.
+
+**TH legal note:** contractor (not employee) → simpler payroll, withhold **3% WHT** on payouts, no social-security obligation. Cleaner for the pilot. Revisit classification if a worker becomes effectively full-time.
 
 ---
 
@@ -93,7 +116,7 @@ dispatch candidates =
   off-hours: non-urgent → queue for next shift
              urgent → auto-assign to on-call worker
 
-on-shift employee = auto-accept (Grab's cherry-pick fix = the shift model)
+on-shift contractor = auto-accept (Grab's cherry-pick fix = the shift model)
 ```
 
 This single mechanism resolves three concerns together:
@@ -155,8 +178,8 @@ Reuse the 8 dailywork-bsc tables; tweak some; add 8.
 
 ### Reuse / tweak
 - **`users`** — add roles `resident` (B2C), `dispatcher`/`admin` alongside `worker`. Keep phone-OTP auth.
-- **`categories`** — reuse; **add `required_evidence`** (e.g. `["before","after"]` vs `["test_video","after"]`).
-- **`worker_profiles`** — reuse `skills[]`, `rating_avg`; **add `worker_type`** (`employee` | `gig`), **`home_zone`**.
+- **`categories`** — reuse; **add `required_evidence`** (e.g. `["before","after"]` vs `["test_video","after"]`), **`base_price`**, **`platform_fee_pct`**.
+- **`worker_profiles`** — reuse `skills[]`, `rating_avg`; **add `worker_type`** (`contractor` = shift-committed core | `gig` = board), **`home_zone`**, **`comp_model`**, **`commission_rate`**, **`retainer_rate`**.
 - **`jobs`** — add `site_id`, `zone_id`, `source` (b2c/b2b), `scheduled_at`, `urgency`, `sla_deadline`, `price`, `address_detail`, `completion_status` (completed_pending / completed / disputed). `location_point` now **mandatory** (customer pin).
 - **`reviews`, `notifications`** — reuse as-is.
 - **`applications`** — **dormant in Phase 1**; becomes the Phase-2 board (gig applies / self-claim).
@@ -168,10 +191,10 @@ Reuse the 8 dailywork-bsc tables; tweak some; add 8.
 | `sites` | villages served | id, name, location_point, juristic_contact, service_hours |
 | `contracts` | B2B village deals | site_id, monthly_fee, scope, wht_rate, billing_day |
 | `worker_shifts` | clock-in / availability | worker_id, start, end, status (clocked_in/out), last_assigned_at, on_call |
-| `dispatch_assignments` | push-assign (owned flow) | job_id, worker_id, status, assigned_by, accepted_at, timeout_at |
+| `dispatch_assignments` | push-assign (managed flow) | job_id, worker_id, status, assigned_by, accepted_at, timeout_at |
 | `category_approvals` | gig skill-gating | worker_id, category_id, approved_by |
 | `job_evidence` | completion proof | job_id, kind (before/after/test_video), url, uploaded_by, taken_at, geo |
-| `payments` | tax trail + escrow | job_id, amount, method, gateway_ref, status, escrow_status (held/released/refunded), paid_at |
+| `payments` | tax trail + escrow + split | job_id, amount, method, gateway_ref, status, escrow_status (held/released/refunded), platform_fee, worker_payout, wht_withheld, paid_at |
 
 **Job status flow:** `requested → assigned → accepted → en_route → in_progress → completed_pending → completed`; `requested → cancelled`; `completed_pending → disputed`.
 
