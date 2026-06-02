@@ -116,6 +116,13 @@ const Map<String, String> _enStrings = {
   'withdraw': 'Withdraw',
   'no_applications': "You haven't applied to any jobs yet",
   'application_withdrawn': 'Application withdrawn',
+  'rate_employer': 'Rate Employer',
+  'reviewed_label': 'Reviewed',
+  'review_title': 'Leave a review',
+  'review_submit': 'Submit',
+  'review_comment_hint': 'Add a comment (optional)',
+  'review_thanks': 'Thanks for your review!',
+  'review_cancel': 'Cancel',
 };
 
 // Kannada strings
@@ -230,6 +237,13 @@ const Map<String, String> _knStrings = {
   'withdraw': 'ಹಿಂಪಡೆಯಿರಿ',
   'no_applications': 'ನೀವು ಇನ್ನೂ ಯಾವುದೇ ಕೆಲಸಕ್ಕೆ ಅರ್ಜಿ ಸಲ್ಲಿಸಿಲ್ಲ',
   'application_withdrawn': 'ಅರ್ಜಿ ಹಿಂಪಡೆಯಲಾಗಿದೆ',
+  'rate_employer': 'ಉದ್ಯೋಗದಾತರನ್ನು ಮೌಲ್ಯಮಾಪನ ಮಾಡಿ',
+  'reviewed_label': 'ಮೌಲ್ಯಮಾಪನ ಮಾಡಲಾಗಿದೆ',
+  'review_title': 'ಅಭಿಪ್ರಾಯ ನೀಡಿ',
+  'review_submit': 'ಸಲ್ಲಿಸಿ',
+  'review_comment_hint': 'ಒಂದು ಅಭಿಪ್ರಾಯ ಸೇರಿಸಿ (ಐಚ್ಛಿಕ)',
+  'review_thanks': 'ನಿಮ್ಮ ಅಭಿಪ್ರಾಯಕ್ಕೆ ಧನ್ಯವಾದಗಳು!',
+  'review_cancel': 'ರದ್ದುಮಾಡಿ',
 };
 
 // Provider that returns current strings map

@@ -64,6 +64,27 @@ class ApiReviewRepository {
     );
     return ReviewPage.fromJson(res.data!);
   }
+
+  /// Submit a review for a completed job. [revieweeId] is the user being rated
+  /// (the employer when a worker reviews, the worker when an employer reviews).
+  /// Throws a [DioException] on failure (e.g. 409 if already reviewed).
+  Future<void> submitReview({
+    required String revieweeId,
+    required String jobId,
+    required int rating,
+    String? comment,
+  }) async {
+    final trimmed = comment?.trim();
+    await _dio.post<Map<String, dynamic>>(
+      '/reviews/',
+      data: {
+        'reviewee_id': revieweeId,
+        'job_id': jobId,
+        'rating': rating,
+        if (trimmed != null && trimmed.isNotEmpty) 'comment': trimmed,
+      },
+    );
+  }
 }
 
 final apiReviewRepositoryProvider = Provider<ApiReviewRepository>((ref) {

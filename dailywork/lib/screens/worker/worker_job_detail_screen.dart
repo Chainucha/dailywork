@@ -10,8 +10,10 @@ import 'package:dailywork/models/user_model.dart';
 import 'package:dailywork/providers/auth_provider.dart';
 import 'package:dailywork/providers/my_applications_provider.dart';
 import 'package:dailywork/repositories/api/api_application_repository.dart';
+import 'package:dailywork/repositories/api/api_review_repository.dart';
 import 'package:dailywork/repositories/job_repository.dart';
 import 'package:dailywork/screens/shared/widgets/status_badge.dart';
+import 'package:dailywork/screens/shared/widgets/review_dialog.dart';
 import 'package:dailywork/screens/shared/widgets/language_toggle_button.dart';
 import 'package:dailywork/core/router/auth_gate.dart';
 
@@ -35,6 +37,10 @@ class WorkerJobDetailScreen extends ConsumerStatefulWidget {
 
 class _WorkerJobDetailScreenState extends ConsumerState<WorkerJobDetailScreen> {
   bool _applying = false;
+  bool _reviewing = false;
+  // Flipped true once the worker submits a review (or the server reports one
+  // already exists), so the button becomes a disabled "Reviewed" label.
+  bool _reviewed = false;
 
   Future<void> _apply(String jobId) async {
     setState(() => _applying = true);
@@ -85,6 +91,43 @@ class _WorkerJobDetailScreenState extends ConsumerState<WorkerJobDetailScreen> {
       ));
     } finally {
       if (mounted) setState(() => _applying = false);
+    }
+  }
+
+  Future<void> _rateEmployer(JobModel job) async {
+    final strings = ref.read(stringsProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    final input = await showReviewDialog(context);
+    if (input == null) return;
+
+    setState(() => _reviewing = true);
+    try {
+      await ref.read(apiReviewRepositoryProvider).submitReview(
+            revieweeId: job.employerId,
+            jobId: job.id,
+            rating: input.rating,
+            comment: input.comment,
+          );
+      if (!mounted) return;
+      setState(() => _reviewed = true);
+      messenger.showSnackBar(SnackBar(
+        content: Text(strings['review_thanks'] ?? 'Thanks for your review!'),
+        backgroundColor: Colors.green,
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      final apiError = ApiException.extract(e);
+      // 409 = already reviewed; treat as terminal so we stop offering the button.
+      if (apiError?.statusCode == 409) {
+        setState(() => _reviewed = true);
+      }
+      messenger.showSnackBar(SnackBar(
+        content: Text(apiError?.message ??
+            (strings['action_failed_toast'] ?? 'Action failed — try again')),
+        backgroundColor: Colors.red,
+      ));
+    } finally {
+      if (mounted) setState(() => _reviewing = false);
     }
   }
 
@@ -347,6 +390,49 @@ class _WorkerJobDetailScreenState extends ConsumerState<WorkerJobDetailScreen> {
 
   Widget _buildBottomAction(JobModel job, Map<String, String> strings) {
     final myApp = _myApplication(job.id);
+
+    // Completed job the worker actually worked on → offer to rate the employer.
+    final workedJob = myApp != null && myApp.applicationStatus == 'accepted';
+    if (job.status == JobStatus.completed && workedJob) {
+      final Widget reviewChild;
+      if (_reviewed) {
+        reviewChild = ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            disabledBackgroundColor: Colors.grey[400],
+            disabledForegroundColor: Colors.white,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          onPressed: null,
+          child: Text(
+            strings['reviewed_label'] ?? 'Reviewed',
+            style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+        );
+      } else {
+        reviewChild = ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.accent,
+            foregroundColor: Colors.white,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          onPressed: _reviewing ? null : () => _rateEmployer(job),
+          child: _reviewing
+              ? _spinner()
+              : Text(
+                  strings['rate_employer'] ?? 'Rate Employer',
+                  style: GoogleFonts.nunito(
+                      fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+        );
+      }
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        child: SizedBox(width: double.infinity, height: 56, child: reviewChild),
+      );
+    }
+
     final isActive = myApp != null &&
         (myApp.applicationStatus == 'pending' ||
             myApp.applicationStatus == 'accepted');
