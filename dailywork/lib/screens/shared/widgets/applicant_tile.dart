@@ -113,46 +113,51 @@ class ApplicantTile extends ConsumerWidget {
               ),
             ] else ...[
               const SizedBox(height: 4),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _statusLabel(strings, applicant.status),
-                      style: GoogleFonts.nunito(
-                        fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[600],
-                      ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _statusLabel(strings, applicant.status),
+                  style: GoogleFonts.nunito(
+                    fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[600],
+                  ),
+                ),
+              ),
+              if (canReview && reviewed) ...[
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    strings['reviewed_label'] ?? 'Reviewed',
+                    style: GoogleFonts.nunito(
+                      fontSize: 13, fontWeight: FontWeight.w700, color: Colors.grey[500],
                     ),
                   ),
-                  if (canReview && reviewed)
-                    Text(
-                      strings['reviewed_label'] ?? 'Reviewed',
-                      style: GoogleFonts.nunito(
-                        fontSize: 13, fontWeight: FontWeight.w700, color: Colors.grey[500],
-                      ),
-                    )
-                  else if (canReview)
-                    ElevatedButton(
-                      key: ValueKey('applicant-rate-${applicant.applicationId}'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.accent,
-                        foregroundColor: Colors.white,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      onPressed: busy ? null : onRate,
-                      child: busy
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor:
-                                    AlwaysStoppedAnimation<Color>(Colors.white),
-                              ),
-                            )
-                          : Text(strings['rate_worker'] ?? 'Rate Worker'),
+                ),
+              ] else if (canReview) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    key: ValueKey('applicant-rate-${applicant.applicationId}'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.accent,
+                      foregroundColor: Colors.white,
                     ),
-                ],
-              ),
+                    onPressed: busy ? null : onRate,
+                    child: busy
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : Text(strings['rate_worker'] ?? 'Rate Worker'),
+                  ),
+                ),
+              ],
             ],
           ],
         ),
