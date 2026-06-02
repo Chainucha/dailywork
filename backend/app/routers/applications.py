@@ -90,7 +90,7 @@ async def list_job_applications(
         .data
         or []
     )
-    return {"data": application_service.enrich_applicants(db, rows)}
+    return {"data": application_service.enrich_applicants(db, rows, reviewer_id=employer["id"])}
 
 
 @router.patch("/applications/{application_id}", response_model=ApplicationResponse)

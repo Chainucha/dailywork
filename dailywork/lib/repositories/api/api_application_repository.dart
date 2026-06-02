@@ -33,6 +33,7 @@ class ApplicantModel {
   final String displayName;
   final String? phoneNumber;
   final double? ratingAvg;
+  final bool reviewed; // employer has already reviewed this worker for the job
 
   const ApplicantModel({
     required this.applicationId,
@@ -41,6 +42,7 @@ class ApplicantModel {
     required this.displayName,
     this.phoneNumber,
     this.ratingAvg,
+    this.reviewed = false,
   });
 
   factory ApplicantModel.fromJson(Map<String, dynamic> json) => ApplicantModel(
@@ -50,6 +52,7 @@ class ApplicantModel {
     displayName: (json['display_name'] as String?) ?? 'Worker',
     phoneNumber: json['phone_number'] as String?,
     ratingAvg: (json['rating_avg'] as num?)?.toDouble(),
+    reviewed: (json['reviewed'] as bool?) ?? false,
   );
 }
 

@@ -130,7 +130,7 @@ class _EmployerApplicantsScreenState extends ConsumerState<EmployerApplicantsScr
                   applicant: a,
                   busy: _busyAppId == a.applicationId,
                   canReview: jobCompleted && a.status == 'accepted',
-                  reviewed: _reviewedWorkers.contains(a.workerId),
+                  reviewed: a.reviewed || _reviewedWorkers.contains(a.workerId),
                   onRate: () => _rateWorker(a),
                   onAccept: () => _act(
                     a.applicationId,

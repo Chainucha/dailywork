@@ -97,6 +97,7 @@ class EmployerJobsGroupedResponse(BaseModel):
 class WorkerApplicationJob(JobResponse):
     application_id: UUID
     application_status: str
+    reviewed: bool = False
 
 
 class WorkerApplicationsGroupedResponse(BaseModel):

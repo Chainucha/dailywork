@@ -124,14 +124,32 @@ def withdraw_application(db: Client, application_id: str, worker_id: str, reason
     return db.table("applications").select("*").eq("id", application_id).execute().data[0]
 
 
-def enrich_applicants(db: Client, rows: list[dict]) -> list[dict]:
+def enrich_applicants(
+    db: Client, rows: list[dict], reviewer_id: str | None = None
+) -> list[dict]:
     """Maps raw application rows to applicant DTO dicts with worker name/phone/rating.
 
-    Batch-fetches users + worker_profiles to avoid N+1.
+    Batch-fetches users + worker_profiles to avoid N+1. When [reviewer_id] is
+    given (the viewing employer), each DTO carries a `reviewed` flag for whether
+    that employer has already reviewed the worker for this job.
     """
     if not rows:
         return []
     worker_ids = list({r["worker_id"] for r in rows})
+
+    # Which workers has this employer already reviewed for this job? All rows
+    # share one job_id (this endpoint lists a single job's applicants).
+    reviewed_ids: set = set()
+    if reviewer_id is not None:
+        job_id = rows[0]["job_id"]
+        reviews = (
+            db.table("reviews")
+            .select("reviewee_id")
+            .eq("reviewer_id", reviewer_id)
+            .eq("job_id", job_id)
+            .execute()
+        )
+        reviewed_ids = {r["reviewee_id"] for r in (reviews.data or [])}
 
     users = (
         db.table("users")
@@ -160,5 +178,6 @@ def enrich_applicants(db: Client, rows: list[dict]) -> list[dict]:
             "display_name": u.get("display_name") or u.get("phone_number"),
             "phone_number": u.get("phone_number"),
             "rating_avg": rating_map.get(r["worker_id"]),
+            "reviewed": r["worker_id"] in reviewed_ids,
         })
     return out

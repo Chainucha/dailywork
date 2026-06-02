@@ -27,6 +27,7 @@ class ApplicantResponse(BaseModel):
     display_name: str | None = None
     phone_number: str | None = None
     rating_avg: float | None = None
+    reviewed: bool = False
 
 
 class ApplicantListResponse(BaseModel):

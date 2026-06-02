@@ -29,10 +29,12 @@ class WorkerApplicationItem {
   final JobModel job;
   final String applicationId;
   final String applicationStatus; // pending | accepted | rejected | withdrawn
+  final bool reviewed; // worker has already reviewed the employer for this job
   const WorkerApplicationItem({
     required this.job,
     required this.applicationId,
     required this.applicationStatus,
+    this.reviewed = false,
   });
 }
 
@@ -59,6 +61,7 @@ class WorkerApplicationsGrouped {
         job: JobModel.fromJson(m),
         applicationId: m['application_id'] as String,
         applicationStatus: m['application_status'] as String,
+        reviewed: (m['reviewed'] as bool?) ?? false,
       );
     }).toList();
     return WorkerApplicationsGrouped(

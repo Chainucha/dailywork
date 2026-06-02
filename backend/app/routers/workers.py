@@ -81,6 +81,18 @@ async def get_my_applications(current_user: dict = Depends(require_worker)):
     )
     enriched = {r["id"]: r for r in _enrich_rows_batch(db, job_rows)}
 
+    # Jobs this worker has already reviewed (for the "reviewed" flag).
+    reviews = (
+        db.table("reviews")
+        .select("job_id")
+        .eq("reviewer_id", current_user["id"])
+        .in_("job_id", job_ids)
+        .execute()
+        .data
+        or []
+    )
+    reviewed_jobs = {r["job_id"] for r in reviews}
+
     grouped = {"pending": [], "accepted": [], "rejected": [], "withdrawn": []}
     for a in apps:
         job = enriched.get(a["job_id"])
@@ -92,6 +104,7 @@ async def get_my_applications(current_user: dict = Depends(require_worker)):
         row = dict(job)
         row["application_id"] = a["id"]
         row["application_status"] = a["status"]
+        row["reviewed"] = a["job_id"] in reviewed_jobs
         bucket.append(row)
     return grouped
 

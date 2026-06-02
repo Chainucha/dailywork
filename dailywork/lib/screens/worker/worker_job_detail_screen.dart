@@ -394,8 +394,9 @@ class _WorkerJobDetailScreenState extends ConsumerState<WorkerJobDetailScreen> {
     // Completed job the worker actually worked on → offer to rate the employer.
     final workedJob = myApp != null && myApp.applicationStatus == 'accepted';
     if (job.status == JobStatus.completed && workedJob) {
+      final alreadyReviewed = _reviewed || myApp.reviewed;
       final Widget reviewChild;
-      if (_reviewed) {
+      if (alreadyReviewed) {
         reviewChild = ElevatedButton(
           style: ElevatedButton.styleFrom(
             disabledBackgroundColor: Colors.grey[400],
