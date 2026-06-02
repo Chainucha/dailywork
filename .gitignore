@@ -123,4 +123,9 @@ app.*.symbols
 .docs/
 .claude/
 CLAUDE.md
-.UI_example/
+
+# Internal docs, dissertation, working notes — kept local, not public
+docs/
+
+# Stray demo/screenshot scratch files
+_*.png
