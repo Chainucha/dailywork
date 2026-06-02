@@ -1,8 +1,11 @@
-# Village Maintenance Dispatch Platform — Design Spec
+# ChangDee (ช่างดี) — Village Maintenance Dispatch Platform — Design Spec
 
+**Name:** ChangDee / ช่างดี ("good technician") — Thai-root, low-literacy friendly, trust-forward.
 **Date:** 2026-06-02
 **Status:** Approved design, pre-implementation
 **Origin:** Fork of `dailywork-bsc` (daily-wage job board). Reuses ~60–70% of stack.
+
+> **Verify before locking name:** LINE OA handle (`@changdee`), `.co.th`/`.com` domain, DBD company-name + DIP trademark clash.
 
 ---
 
