@@ -60,4 +60,56 @@ void main() {
     expect(find.byKey(const ValueKey('applicant-accept-a2')), findsNothing);
     expect(find.byKey(const ValueKey('applicant-reject-a2')), findsNothing);
   });
+
+  testWidgets('shows Rate button for accepted worker on completed job', (tester) async {
+    var rated = false;
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: Scaffold(
+            body: ApplicantTile(
+              applicant: ApplicantModel(
+                applicationId: 'a3', workerId: 'w3', status: 'accepted',
+                displayName: 'Bhanu', phoneNumber: null, ratingAvg: null,
+              ),
+              busy: false,
+              canReview: true,
+              onAccept: () {},
+              onReject: () {},
+              onRate: () => rated = true,
+            ),
+          ),
+        ),
+      ),
+    );
+    final rateBtn = find.byKey(const ValueKey('applicant-rate-a3'));
+    expect(rateBtn, findsOneWidget);
+    await tester.tap(rateBtn);
+    expect(rated, isTrue);
+  });
+
+  testWidgets('shows Reviewed label instead of Rate once reviewed', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          home: Scaffold(
+            body: ApplicantTile(
+              applicant: ApplicantModel(
+                applicationId: 'a4', workerId: 'w4', status: 'accepted',
+                displayName: 'Chitra', phoneNumber: null, ratingAvg: null,
+              ),
+              busy: false,
+              canReview: true,
+              reviewed: true,
+              onAccept: () {},
+              onReject: () {},
+              onRate: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.byKey(const ValueKey('applicant-rate-a4')), findsNothing);
+    expect(find.text('Reviewed'), findsOneWidget);
+  });
 }

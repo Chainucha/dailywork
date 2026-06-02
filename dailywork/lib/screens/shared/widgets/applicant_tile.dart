@@ -14,12 +14,22 @@ class ApplicantTile extends ConsumerWidget {
     required this.busy,
     required this.onAccept,
     required this.onReject,
+    this.canReview = false,
+    this.reviewed = false,
+    this.onRate,
   });
 
   final ApplicantModel applicant;
   final bool busy;
   final VoidCallback onAccept;
   final VoidCallback onReject;
+
+  /// When true (completed job + accepted worker), show a "Rate Worker" action.
+  final bool canReview;
+
+  /// True once this worker has been reviewed — shows a disabled label instead.
+  final bool reviewed;
+  final VoidCallback? onRate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -103,14 +113,45 @@ class ApplicantTile extends ConsumerWidget {
               ),
             ] else ...[
               const SizedBox(height: 4),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  _statusLabel(strings, applicant.status),
-                  style: GoogleFonts.nunito(
-                    fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[600],
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _statusLabel(strings, applicant.status),
+                      style: GoogleFonts.nunito(
+                        fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[600],
+                      ),
+                    ),
                   ),
-                ),
+                  if (canReview && reviewed)
+                    Text(
+                      strings['reviewed_label'] ?? 'Reviewed',
+                      style: GoogleFonts.nunito(
+                        fontSize: 13, fontWeight: FontWeight.w700, color: Colors.grey[500],
+                      ),
+                    )
+                  else if (canReview)
+                    ElevatedButton(
+                      key: ValueKey('applicant-rate-${applicant.applicationId}'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.accent,
+                        foregroundColor: Colors.white,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: busy ? null : onRate,
+                      child: busy
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Text(strings['rate_worker'] ?? 'Rate Worker'),
+                    ),
+                ],
               ),
             ],
           ],

@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:dailywork/core/network/api_client.dart';
 import 'package:dailywork/core/theme/app_theme.dart';
+import 'package:dailywork/models/job_model.dart';
 import 'package:dailywork/providers/applicants_provider.dart';
 import 'package:dailywork/providers/job_provider.dart';
 import 'package:dailywork/providers/language_provider.dart';
 import 'package:dailywork/repositories/api/api_application_repository.dart';
+import 'package:dailywork/repositories/api/api_review_repository.dart';
 import 'package:dailywork/screens/shared/widgets/applicant_tile.dart';
+import 'package:dailywork/screens/shared/widgets/review_dialog.dart';
 import 'package:dailywork/screens/shared/widgets/language_toggle_button.dart';
 
 class EmployerApplicantsScreen extends ConsumerStatefulWidget {
@@ -20,6 +24,9 @@ class EmployerApplicantsScreen extends ConsumerStatefulWidget {
 
 class _EmployerApplicantsScreenState extends ConsumerState<EmployerApplicantsScreen> {
   String? _busyAppId;
+  // Worker ids the employer has already reviewed this session (or that the
+  // server reported as already reviewed via 409).
+  final Set<String> _reviewedWorkers = {};
 
   Future<void> _act(
     String appId,
@@ -45,11 +52,49 @@ class _EmployerApplicantsScreenState extends ConsumerState<EmployerApplicantsScr
     }
   }
 
+  Future<void> _rateWorker(ApplicantModel a) async {
+    final strings = ref.read(stringsProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    final input = await showReviewDialog(context);
+    if (input == null) return;
+
+    setState(() => _busyAppId = a.applicationId);
+    try {
+      await ref.read(apiReviewRepositoryProvider).submitReview(
+            revieweeId: a.workerId,
+            jobId: widget.jobId,
+            rating: input.rating,
+            comment: input.comment,
+          );
+      if (!mounted) return;
+      setState(() => _reviewedWorkers.add(a.workerId));
+      messenger.showSnackBar(SnackBar(
+        content: Text(strings['review_thanks'] ?? 'Thanks for your review!'),
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      final apiError = ApiException.extract(e);
+      if (apiError?.statusCode == 409) {
+        setState(() => _reviewedWorkers.add(a.workerId));
+      }
+      messenger.showSnackBar(SnackBar(
+        content: Text(apiError?.message ??
+            (strings['action_failed_toast'] ?? 'Action failed — try again')),
+      ));
+    } finally {
+      if (mounted) setState(() => _busyAppId = null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = ref.watch(stringsProvider);
     final repo = ref.watch(apiApplicationRepositoryProvider);
     final applicantsAsync = ref.watch(applicantsProvider(widget.jobId));
+    final jobCompleted = ref.watch(jobDetailProvider(widget.jobId)).maybeWhen(
+          data: (job) => job.status == JobStatus.completed,
+          orElse: () => false,
+        );
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -84,6 +129,9 @@ class _EmployerApplicantsScreenState extends ConsumerState<EmployerApplicantsScr
                 return ApplicantTile(
                   applicant: a,
                   busy: _busyAppId == a.applicationId,
+                  canReview: jobCompleted && a.status == 'accepted',
+                  reviewed: _reviewedWorkers.contains(a.workerId),
+                  onRate: () => _rateWorker(a),
                   onAccept: () => _act(
                     a.applicationId,
                     () => repo.accept(a.applicationId),
